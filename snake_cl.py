@@ -273,7 +273,7 @@ def listen_server(sock):
 					if len(g.snakes) < i + 1:
 						# добавился игрок
 						#print('new snake')
-						new_snake = Snake(i + 1, 'name1', sn.body)
+						new_snake = Snake(i + 1, sn.name, sn.body)
 						g.snakes.append(new_snake)
 					else:
 						# новых игроков нет

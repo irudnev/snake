@@ -22,6 +22,7 @@ BACKGROUND = "#ccd5cc"
 SNAKE_COLORS = ["#E74C3C", "#F1C40F", "#2980B9", "#72BAAC", "#E67E22", "#8B4D93"]
 SNAKE_SIZE = 20
 APPLE_SIZE = SNAKE_SIZE
+CLIENTS_COUNT = 3
 #CON = connect('snake.db')
 #CUR = CON.cursor()
 
@@ -217,6 +218,7 @@ def client_key_listen(client, new_snake):
 				entry = pickle.loads(data)
 				way = entry.get('way', None)
 				if way and way=='Escape':
+					#s.close()
 					break;
 				elif way:
 					#print(way)
@@ -236,15 +238,16 @@ def check_login(log, pas):
 
 def client_listen(s):
 	try:
-		while len(g.clients) < 3:
+		while len(g.clients) <= CLIENTS_COUNT:
 			client, client_addr = s.accept()
-			client.settimeout(30)
+			client.settimeout(60)
 			print(client_addr)
 			data = client.recv(1024)
 			entry = pickle.loads(data)
 			log = entry.get('log', None)
 			print('log', log)
 			pas = entry.get('pass', None)
+			# первый игрок задает тип игры
 			it_move = entry.get('move', None)
 			if(it_move != None and len(g.clients) == 0):
 				g.item_is_move = it_move
@@ -341,6 +344,7 @@ def start_game():
 					sn.is_reverse = False
 				except:
 					print('except', 'id', sn.id)
+					#g.snakes.remove(sn)
 					exception_count += 1
 			if g.game_over or exception_count > 5:
 				g.game_over = True
