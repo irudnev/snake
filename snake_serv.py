@@ -344,13 +344,13 @@ def start_game():
 					sn.is_reverse = False
 				except:
 					print('except', 'id', sn.id)
-					#g.snakes.remove(sn)
+					g.snakes.remove(sn)
 					exception_count += 1
-			if g.game_over or exception_count > 5:
-				g.game_over = True
-				print('close sock from startgame', g.game_over, exception_count > 5)
-				s.close()
-				break;
+			#if g.game_over or exception_count > 5:
+			#	g.game_over = True
+			#	print('close sock from startgame', g.game_over, exception_count > 5)
+			#	s.close()
+			#	break;
 
 			#t.sleep(g.speed/10000)
 			t.sleep(0.1)
