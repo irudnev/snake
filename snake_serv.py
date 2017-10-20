@@ -32,7 +32,7 @@ class Game():
 	snakes = []
 	apple_koord = (0, 0)
 	speed = 1000
-	item_is_move = False
+	item_is_move = True
 	#apple_pic = PhotoImage(file='apple.gif', width=APPLE_SIZE, height=APPLE_SIZE)
 	#kk_pic = PhotoImage(file='kk.gif', width=APPLE_SIZE, height=APPLE_SIZE)
 
@@ -211,7 +211,10 @@ def client_key_listen(client, new_snake):
 		print('client_key_listen error')
 
 def check_login(log, pas):
-	return hashlib.md5("2".encode()).hexdigest() == pas
+	return True
+
+	#return hashlib.md5("2".encode()).hexdigest() == pas
+
 	#if user:
 	#	return user.check_password(pas)
 	#else:
@@ -276,7 +279,7 @@ def start_game():
 
 	with s:
 		s.bind(t_addr)
-		s.settimeout(30)
+		s.settimeout(300)
 		s.listen()
 		#while True:
 		#	client, client_addr = s.accept()
@@ -326,7 +329,7 @@ def start_game():
 				break;
 
 			#t.sleep(g.speed/10000)
-			t.sleep(0.3)
+			t.sleep(0.1)
 			#client.sendall(data.upper())
 		#	t.sleep(5)
 		#	break;

@@ -29,13 +29,18 @@ class Game():
 	game_over_id = 400
 	score = 0
 	lives = 3
-	item_is_move = False
+	item_is_move = True
 	apple_pic = PhotoImage(file='apple.gif', width=APPLE_SIZE, height=APPLE_SIZE)
 	kk_pic = PhotoImage(file='kk.gif', width=APPLE_SIZE, height=APPLE_SIZE)
 	heart_pic = PhotoImage(file='heart.gif', width=APPLE_SIZE, height=APPLE_SIZE)
 
 	incorrect_login = None
+	error_label = None
 	log_label = None
+	ip_label = None
+	ip_text = None
+	port_label = None
+	port_text = None
 	login_label = None
 	login_text = None
 	pass_label = None
@@ -138,23 +143,63 @@ def key(event):
 	elif event.keysym == 'Escape':
 		root.destroy()
 
-def option_window():
-	g.log_label = Label(root,text='Для входа в игру нужно зарегистрироваться на сайте: snake.com')
+def option_window(connect_error=False):
+	g.log_label = Label(root,text='Для входа в игру нужно зарегистрироваться на сайте:\nhttps://immense-reaches-92347.herokuapp.com/')
+	g.ip_label = Label(root,text='Адрес сервера:')
+	g.ip_text = Entry(root,width=7,font='Arial 12')
+	g.ip_text.insert(END, 'localhost')
+	g.port_label = Label(root,text='Порт:')
+	g.port_text = Entry(root,width=7,font='Arial 12')
+	g.port_text.insert(END, '9090')
 	g.login_label = Label(root,text='Логин:')
-	g.login_text = Entry(root,width=7,font='Arial 14')
+	g.login_text = Entry(root,width=7,font='Arial 12')
+	g.login_text.insert(END, 'Player1')
 	g.pass_label = Label(root,text='Пароль:')
-	g.pass_text = Entry(root,width=7,font='Arial 14',show='*')
+	g.pass_text = Entry(root,width=7,font='Arial 12',show='*')
+	g.pass_text.insert(END, 'Player1')
 	g.login_btn = Button(root, text="Войти", fg="red",
 			command=login)
 
 	g.log_label.grid(row=0,columnspan=5)
-	g.login_label.grid(row=1,column=0)
-	g.login_text.grid(row=1,column=1,padx=10)
-	g.pass_label.grid(row=1,column=2)
-	g.pass_text.grid(row=1,column=3,padx=10)
-	g.login_btn.grid(row=1,column=4,padx=10)
+	g.ip_label.grid(row=1,column=0)
+	g.ip_text.grid(row=1,column=1,padx=10)
+	g.port_label.grid(row=1,column=2)
+	g.port_text.grid(row=1,column=3,padx=10)
+	g.login_label.grid(row=2,column=0)
+	g.login_text.grid(row=2,column=1,padx=10)
+	g.pass_label.grid(row=2,column=2)
+	g.pass_text.grid(row=2,column=3,padx=10)
+	g.login_btn.grid(row=2,column=4,padx=10)
+
+	if connect_error:
+		g.error_label = Label(root,text='Cервер недоступен, проверьте адрес и порт!',fg="red")
+		g.error_label.grid(row=3,columnspan=5)
+
+def delete_option_window():
+	g.log_label.grid_remove()
+	g.ip_label.grid_remove()
+	g.ip_text.grid_remove()
+	g.port_label.grid_remove()
+	g.port_text.grid_remove()
+	g.login_label.grid_remove()
+	g.login_text.grid_remove()
+	g.pass_label.grid_remove()
+	g.pass_text.grid_remove()
+	g.login_btn.grid_remove()
+	if g.error_label != None:
+		g.error_label.grid_remove()
+	if g.incorrect_login != None:
+		g.incorrect_login.grid_remove()
 
 def login():
+
+	try:
+		sock.connect((g.ip_text.get(), int(g.port_text.get())))
+		sock.settimeout(30)
+	except:
+		delete_option_window()
+		option_window(True)
+
 	entry = {'log': g.login_text.get(), 'pass': hashlib.md5(g.pass_text.get().encode()).hexdigest()}
 	data = pickle.dumps(entry)
 	sock.send(data)
@@ -162,14 +207,7 @@ def login():
 
 	data = sock.recv(128)
 	if data == b'ok':
-		g.log_label.grid_remove()
-		g.login_label.grid_remove()
-		g.login_text.grid_remove()
-		g.pass_label.grid_remove()
-		g.pass_text.grid_remove()
-		g.login_btn.grid_remove()
-		if g.incorrect_login != None:
-			g.incorrect_login.grid_remove()
+		delete_option_window()
 		
 		c.focus_set()
 		sock.settimeout(10)
@@ -263,9 +301,9 @@ start_game()
 
 sock = socket.socket()
 #sock.connect(('172.16.161.178', 9090)) 
-sock.connect(('192.168.20.99', 9090))
+#sock.connect(('192.168.20.99', 9090))
 #sock.connect(('https://immense-reaches-92347.herokuapp.com', 9090))
-sock.settimeout(30)
+#sock.settimeout(30)
 
 option_window()
 #Thread(target=listen_server, args=[sock]).start()
