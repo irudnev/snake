@@ -37,8 +37,21 @@ class Game():
 	#kk_pic = PhotoImage(file='kk.gif', width=APPLE_SIZE, height=APPLE_SIZE)
 
 	def get_apple_koord(self):
-		self.apple_koord = (APPLE_SIZE * random.randint(0, (WIDTH - APPLE_SIZE)/APPLE_SIZE),
+		new_apple_koord = (APPLE_SIZE * random.randint(0, (WIDTH - APPLE_SIZE)/APPLE_SIZE),
 						APPLE_SIZE * random.randint(0, (WIDTH - APPLE_SIZE)/APPLE_SIZE))
+		while new_apple_koord == self.apple_koord or not Game.check_apple_koord(new_apple_koord):
+			new_apple_koord = (APPLE_SIZE * random.randint(0, (WIDTH - APPLE_SIZE)/APPLE_SIZE),
+						APPLE_SIZE * random.randint(0, (WIDTH - APPLE_SIZE)/APPLE_SIZE))
+		self.apple_koord = new_apple_koord
+
+	def check_apple_koord(new_apple_koord):
+		for sn in g.snakes:
+			i = 0
+			while i < len(sn.body):
+				if(new_apple_koord[0] == sn.body[i]['x'] and new_apple_koord[1] == sn.body[i]['y']):
+					return False
+				i += 1
+		return True
 
 	def check_game(self):
 		g_over = True
@@ -70,8 +83,8 @@ class Snake(object):
 		#self.move()
 
 	def add_snake_len(self, x, y):
-		# на вторую позицию, после головы
-		self.body.insert(1, {'x': x, 'y': y})
+		# на первую позицию, голова
+		self.body.insert(0, {'x': x, 'y': y})
 
 	def is_crash(self):
 		k_x = self.body[0]['x']
@@ -98,7 +111,7 @@ class Snake(object):
 		return False
 
 	def reverse(self, new_vect, vect_ind = 0):
-		if(len(self.body) > 1 and self.vector[vect_ind] == -1 * new_vect[vect_ind]):
+		if(g.item_is_move and len(self.body) > 1 and self.vector[vect_ind] == -1 * new_vect[vect_ind]):
 			self.body.reverse()
 			self.choose_way()
 			self.is_reverse = True
@@ -146,19 +159,20 @@ class Snake(object):
 
 				# съела яблоко
 				if(new_koord[0] == g.apple_koord[0] and new_koord[1] == g.apple_koord[1]):
-					self.add_snake_len(x_koord, y_koord)
+					self.add_snake_len(new_koord[0], new_koord[1])
 					g.get_apple_koord()
 					self.score = self.score + 10
 					result = 1 # apple
 				# нет яблока, двигаем тело
-				elif g.item_is_move:
-					i = len(self.body) - 1
-					while i > 0:
-						self.body[i]['x'] = self.body[i - 1]['x']
-						self.body[i]['y'] = self.body[i - 1]['y']
-						i -= 1
-				self.body[0]['x'] = new_koord[0]
-				self.body[0]['y'] = new_koord[1]
+				else:
+					if g.item_is_move:
+						i = len(self.body) - 1
+						while i > 0:
+							self.body[i]['x'] = self.body[i - 1]['x']
+							self.body[i]['y'] = self.body[i - 1]['y']
+							i -= 1
+					self.body[0]['x'] = new_koord[0]
+					self.body[0]['y'] = new_koord[1]
 				return result
 				#root.after(g.speed, self.move)
 
@@ -231,6 +245,9 @@ def client_listen(s):
 			log = entry.get('log', None)
 			print('log', log)
 			pas = entry.get('pass', None)
+			it_move = entry.get('move', None)
+			if(it_move != None and len(g.clients) == 0):
+				g.item_is_move = it_move
 
 			#user = User.objects.get(username=log)
 
@@ -246,7 +263,10 @@ def client_listen(s):
 				if way and way=='Escape':
 					continue
 			
-			client.send(b'ok')
+			if g.item_is_move:
+				client.send(b'mok')
+			else:
+				client.send(b'nok')
 			client.settimeout(15)
 
 			#cl_id = uuid.uuid4()

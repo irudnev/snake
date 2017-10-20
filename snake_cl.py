@@ -29,7 +29,11 @@ class Game():
 	game_over_id = 400
 	score = 0
 	lives = 3
-	item_is_move = True
+	item_is_move = BooleanVar()
+	item_is_move.set(True)
+	boolvar = BooleanVar()
+	boolvar.set(False)
+	boolvar.trace('w', lambda *_: print("The value was changed"))
 	apple_pic = PhotoImage(file='apple.gif', width=APPLE_SIZE, height=APPLE_SIZE)
 	kk_pic = PhotoImage(file='kk.gif', width=APPLE_SIZE, height=APPLE_SIZE)
 	heart_pic = PhotoImage(file='heart.gif', width=APPLE_SIZE, height=APPLE_SIZE)
@@ -46,6 +50,7 @@ class Game():
 	pass_label = None
 	pass_text = None
 	login_btn = None
+	game_type = None
 
 	def create_apple(self):
 		c.delete(self.apple_id)
@@ -81,7 +86,7 @@ class Snake(object):
 
 	def add_snake_len(self, x, y, is_oval=False):
 		# на вторую позицию, после головы
-		self.body.append(Snake.create_element(x, y, self.color, Game.item_is_move or len(self.body) == 0, is_oval))
+		self.body.append(Snake.create_element(x, y, self.color, Game.item_is_move.get() or len(self.body) == 0, is_oval))
 
 	def create_element(x, y, color, is_snake=True, is_oval=False):
 		if is_snake:
@@ -100,7 +105,7 @@ class Snake(object):
 		new_koord = [new_koord_x, new_koord_y]
 		if g.game_over == False:			
 			# двигаем тело
-			if g.item_is_move:
+			if g.item_is_move.get():
 				#print('body move', self.body)
 				i = len(self.body) - 1
 				while i > 0:
@@ -145,12 +150,13 @@ def key(event):
 
 def option_window(connect_error=False):
 	g.log_label = Label(root,text='Для входа в игру нужно зарегистрироваться на сайте:\nhttps://immense-reaches-92347.herokuapp.com/')
-	g.ip_label = Label(root,text='Адрес сервера:')
+	g.ip_label = Label(root,text='Сервер:')
 	g.ip_text = Entry(root,width=7,font='Arial 12')
 	g.ip_text.insert(END, 'localhost')
 	g.port_label = Label(root,text='Порт:')
 	g.port_text = Entry(root,width=7,font='Arial 12')
 	g.port_text.insert(END, '9090')
+	g.game_type = Checkbutton(root, text="Обычный режим",variable = g.item_is_move)
 	g.login_label = Label(root,text='Логин:')
 	g.login_text = Entry(root,width=7,font='Arial 12')
 	g.login_text.insert(END, 'Player1')
@@ -165,6 +171,7 @@ def option_window(connect_error=False):
 	g.ip_text.grid(row=1,column=1,padx=10)
 	g.port_label.grid(row=1,column=2)
 	g.port_text.grid(row=1,column=3,padx=10)
+	g.game_type.grid(row=1,column=4,padx=10)
 	g.login_label.grid(row=2,column=0)
 	g.login_text.grid(row=2,column=1,padx=10)
 	g.pass_label.grid(row=2,column=2)
@@ -181,6 +188,7 @@ def delete_option_window():
 	g.ip_text.grid_remove()
 	g.port_label.grid_remove()
 	g.port_text.grid_remove()
+	g.game_type.grid_remove()
 	g.login_label.grid_remove()
 	g.login_text.grid_remove()
 	g.pass_label.grid_remove()
@@ -192,7 +200,6 @@ def delete_option_window():
 		g.incorrect_login.grid_remove()
 
 def login():
-
 	try:
 		sock.connect((g.ip_text.get(), int(g.port_text.get())))
 		sock.settimeout(30)
@@ -200,14 +207,19 @@ def login():
 		delete_option_window()
 		option_window(True)
 
-	entry = {'log': g.login_text.get(), 'pass': hashlib.md5(g.pass_text.get().encode()).hexdigest()}
+	entry = {'log': g.login_text.get(), 'pass': hashlib.md5(g.pass_text.get().encode()).hexdigest(), 'move':g.item_is_move.get()}
 	data = pickle.dumps(entry)
 	sock.send(data)
 	#print('sended')
 
 	data = sock.recv(128)
-	if data == b'ok':
+	if data == b'mok' or data == b'nok':
 		delete_option_window()
+
+		if data == b'mok':
+			g.item_is_move.set(True)
+		else:
+			g.item_is_move.set(False)
 		
 		c.focus_set()
 		sock.settimeout(10)
@@ -259,18 +271,22 @@ def listen_server(sock):
 				#print('snake')
 				for sn in snakes:
 					if len(g.snakes) < i + 1:
+						# добавился игрок
 						#print('new snake')
 						new_snake = Snake(i + 1, 'name1', sn.body)
 						g.snakes.append(new_snake)
 					else:
+						# новых игроков нет
 						#print('else', len(sn.body) == len(g.snakes[i].body))
 						if len(sn.body) == len(g.snakes[i].body):
+							# размер текущего игрока не изменился
 							#print('equal len', sn.body[0]['x'], sn.body[0]['y'])
 							#print('g.snakes', g.snakes[i].body)
 							if sn.is_reverse:
 								g.snakes[i].body.reverse()
 							g.snakes[i].move(sn.body[0]['x'], sn.body[0]['y'])
 						else:
+							# размер текущего игрока изменился
 							#print('else')
 							for it in g.snakes[i].body:
 								c.delete(it['id'])
