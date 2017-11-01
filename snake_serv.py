@@ -6,180 +6,19 @@ import pickle
 import uuid
 import hashlib
 #from models import SnakeUser
+import snake_main as m
 
 
 
 #from tkinter import *
-import random
 #from sqlite3 import connect
-import uuid
 from threading import Thread
 #import ttk
 
-WIDTH = 400
-HEIGHT = WIDTH
-BACKGROUND = "#ccd5cc"
-SNAKE_COLORS = ["#E74C3C", "#F1C40F", "#2980B9", "#72BAAC", "#E67E22", "#8B4D93"]
-SNAKE_SIZE = 20
-APPLE_SIZE = SNAKE_SIZE
-CLIENTS_COUNT = 3
 #CON = connect('snake.db')
 #CUR = CON.cursor()
 
 #root = Tk()
-class Game():
-	clients = []
-	game_over = False
-	snakes = []
-	apple_koord = (0, 0)
-	speed = 1000
-	item_is_move = True
-	#apple_pic = PhotoImage(file='apple.gif', width=APPLE_SIZE, height=APPLE_SIZE)
-	#kk_pic = PhotoImage(file='kk.gif', width=APPLE_SIZE, height=APPLE_SIZE)
-
-	def get_apple_koord(self):
-		new_apple_koord = (APPLE_SIZE * random.randint(0, (WIDTH - APPLE_SIZE)/APPLE_SIZE),
-						APPLE_SIZE * random.randint(0, (WIDTH - APPLE_SIZE)/APPLE_SIZE))
-		while new_apple_koord == self.apple_koord or not Game.check_apple_koord(new_apple_koord):
-			new_apple_koord = (APPLE_SIZE * random.randint(0, (WIDTH - APPLE_SIZE)/APPLE_SIZE),
-						APPLE_SIZE * random.randint(0, (WIDTH - APPLE_SIZE)/APPLE_SIZE))
-		self.apple_koord = new_apple_koord
-
-	def check_apple_koord(new_apple_koord):
-		for sn in g.snakes:
-			i = 0
-			while i < len(sn.body):
-				if(new_apple_koord[0] == sn.body[i]['x'] and new_apple_koord[1] == sn.body[i]['y']):
-					return False
-				i += 1
-		return True
-
-	def check_game(self):
-		g_over = True
-		for sn in self.snakes:
-			if sn.sn_game_over == False:
-				g_over = False
-		if g_over:
-			print('check_game gameover')
-			self.game_over = True
-
-
-class Snake(object):
-	name = "anonim"
-	color = SNAKE_COLORS[len(Game.snakes)]
-	id = 0
-	vector = (1 , 0)
-	body = []
-	score = 0
-	sn_game_over = False
-	lives = 3
-	is_reverse = False
-
-	def __init__(self, id, name, koord, lives=3):
-		self.name = name
-		self.id = id
-		self.body = []
-		self.add_snake_len(koord[0], koord[1])
-		self.lives = lives
-		#self.move()
-
-	def add_snake_len(self, x, y):
-		# на первую позицию, голова
-		self.body.insert(0, {'x': x, 'y': y})
-
-	def is_crash(self):
-		k_x = self.body[0]['x']
-		k_y = self.body[0]['y']
-		#print('koord', k_x, k_y)
-		# за границами игрового поля
-		if (k_x < 0 or k_x > WIDTH - SNAKE_SIZE
-				or k_y < 0 or k_y > HEIGHT - SNAKE_SIZE):
-			return True
-
-		# укусила себя или другую змею
-		for sn in g.snakes:
-			i = 0
-			# свою голову не проверяем
-			if sn.id == self.id:
-				i = 1
-			while i < len(sn.body):
-				if(k_x == sn.body[i]['x'] and k_y == sn.body[i]['y']):
-					return True
-				i += 1
-		# врезалась в забор
-		# забора пока нет
-
-		return False
-
-	def reverse(self, new_vect, vect_ind = 0):
-		if(g.item_is_move and len(self.body) > 1 and self.vector[vect_ind] == -1 * new_vect[vect_ind]):
-			self.body.reverse()
-			self.choose_way()
-			self.is_reverse = True
-		else:
-			self.vector = new_vect
-
-	def choose_way(self):
-		if(len(self.body) > 1):
-			if(self.body[0]['x'] > self.body[1]['x']):
-				#print('one')
-				self.vector = (1, 0)
-			elif(self.body[0]['x'] < self.body[1]['x']):
-				#print('two')
-				self.vector = (-1, 0)
-			elif(self.body[0]['y'] < self.body[1]['y']):
-				#print('three')
-				self.vector = (0, -1)
-			elif(self.body[0]['y'] > self.body[1]['y']):
-				#print('four')
-				self.vector = (0, 1)
-
-	def check_lives(self):
-		print('check lives')
-		self.lives -= 1
-		if self.lives > 0:
-			self.body.clear()
-			self.body.append({'x': 0, 'y': 0})
-			self.vector = (1, 0)
-			new_koord = (self.body[0]['x'] + SNAKE_SIZE * self.vector[0],
-				self.body[0]['y'] + SNAKE_SIZE * self.vector[1])
-		else:
-			print('check lives sn gameover')
-			self.sn_game_over = True
-			g.check_game()
-
-	def move(self):
-		if g.game_over == False and self.sn_game_over == False:
-			result = 0 # moved
-			#threading.Thread(target=g.refresh_data, args=[self]).start()
-			x_koord = self.body[0]['x']
-			y_koord = self.body[0]['y']
-			if(not self.is_crash()):
-				new_koord = (self.body[0]['x'] + SNAKE_SIZE * self.vector[0],
-					self.body[0]['y'] + SNAKE_SIZE * self.vector[1])
-
-				# съела яблоко
-				if(new_koord[0] == g.apple_koord[0] and new_koord[1] == g.apple_koord[1]):
-					self.add_snake_len(new_koord[0], new_koord[1])
-					g.get_apple_koord()
-					self.score = self.score + 10
-					result = 1 # apple
-				# нет яблока, двигаем тело
-				else:
-					if g.item_is_move:
-						i = len(self.body) - 1
-						while i > 0:
-							self.body[i]['x'] = self.body[i - 1]['x']
-							self.body[i]['y'] = self.body[i - 1]['y']
-							i -= 1
-					self.body[0]['x'] = new_koord[0]
-					self.body[0]['y'] = new_koord[1]
-				return result
-				#root.after(g.speed, self.move)
-
-			else:
-				self.check_lives()
-				return 3 # game over
 
 #Button(root, text = '1').place(x = 10, y = 10, width = 30)
 
@@ -199,11 +38,11 @@ def key(name, snake):
 		#clean db
 		#root.destroy()
 	elif(name == "space"):
-		if(Game.speed == 10000000):
-			Game.speed = 100
-			snake.move()
+		if(m.Game.speed == 10000000):
+			m.Game.speed = 100
+			m.Snake.get_move((snake.body[0]['x'], snake.body[0]['y']), snake.vector)
 		else:
-			Game.speed = 10000000
+			m.Game.speed = 10000000
 	elif(name == "Return"):
 		start_game()
 
@@ -238,7 +77,7 @@ def check_login(log, pas):
 
 def client_listen(s):
 	try:
-		while len(g.clients) <= CLIENTS_COUNT:
+		while len(g.clients) <= m.CLIENTS_COUNT:
 			client, client_addr = s.accept()
 			client.settimeout(60)
 			print(client_addr)
@@ -279,7 +118,7 @@ def client_listen(s):
 
 			g.clients.append({'id': cl_id, 'name': log, 'client': client, 'addr': client_addr})
 
-			new_snake = Snake(cl_id, log, (0, 0))
+			new_snake = m.Snake(cl_id, log, m.START_POSITIONS[len(g.snakes)])
 			g.snakes.append(new_snake)
 			
 			Thread(target=client_key_listen, args=(client, new_snake)).start()
@@ -289,8 +128,8 @@ def client_listen(s):
 			g.game_over = True
 			print('close sock from client_listen')
 			s.close()
-	except:
-		print('client_listen error')
+	except Exception as inst:
+		print('client_listen error', inst)
 		g.game_over = True
 		s.close()
 
@@ -331,13 +170,17 @@ def start_game():
 
 		i = 0
 		exception_count = 0
-		while i<1000:
+		max_score = 0
+		while max_score < 1000:
 			i += 1
 			for sn in g.snakes:
-				sn.move()
+				new_koord = sn.snake_move(g)
+				if sn.score > max_score:
+					max_score = sn.score
 			for sn in g.snakes:
 				try:
 					entry = {'apple_koord': g.apple_koord, 'id': sn.id, 'name': sn.name, 'snakes': g.snakes}
+					#print('entry', sn.body)
 					data = pickle.dumps(entry)
 					g.clients[sn.id - 1]['client'].send(data)
 					exception_count = 0
@@ -361,8 +204,8 @@ def start_game():
 s = socket()
 t_addr = ('0.0.0.0', 9090)
 # 192.168.20.99
-g = Game()
+g = m.GAME
 start_game()
-#s = Snake('Player' + str(len(Game.snakes)), (0, len(Game.snakes) * SNAKE_SIZE + 0))
+#s = Snake('Player' + str(len(m.Game.snakes)), (0, len(m.Game.snakes) * m.SNAKE_SIZE + 0))
 #s2 = Snake('Player2', (0, 30))
 #c.bind("<Button-1>", callback)
