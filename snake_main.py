@@ -6,8 +6,8 @@ from math import fabs
 # временно
 import time as t
 
-WIDTH = 100
-HEIGHT = 100
+WIDTH = 600
+HEIGHT = 400
 BACKGROUND = "#ccd5cc"
 SNAKE_SIZE = 20
 APPLE_SIZE = SNAKE_SIZE
@@ -27,6 +27,7 @@ class Game():
 	item_is_move = True
 	bot_count = 1
 	bot_level = 3
+	distance_mas = []
 
 	def calc_apple_koord():
 		return (APPLE_SIZE * randint(0, int((WIDTH - APPLE_SIZE)/APPLE_SIZE)),
@@ -185,6 +186,45 @@ class Snake(object):
 	def bot_vector(self, g):
 		if g.game_over == False:
 			option = randint(0, self.bot_level * self.bot_level * 100)
+			old_v = self.vector
+			if option < 90 or (option < 550 and option > 190):
+				res = 10000
+				vect = self.vector
+				x = int(self.body[0]['x'] / SNAKE_SIZE)
+				y = int(self.body[0]['y'] / SNAKE_SIZE)
+				n = int(WIDTH / SNAKE_SIZE)
+				m = int(HEIGHT / SNAKE_SIZE)
+
+				if x > 0 and g.distance_mas[x - 1][y] < res:
+					res = g.distance_mas[x - 1][y]
+					vect = (-1, 0)
+				if x < n - 1 and g.distance_mas[x + 1][y] < res:
+					res = g.distance_mas[x + 1][y]
+					vect = (1, 0)
+				if y > 0 and g.distance_mas[x][y - 1] < res:
+					res = g.distance_mas[x][y - 1]
+					vect = (0, -1)
+				if y < m - 1 and g.distance_mas[x][y + 1] < res:
+					res = g.distance_mas[x][y + 1]
+					vect = (0, 1)
+				self.vector = vect
+			else:
+				vectors = [(1, 0), (-1, 0), (0, 1), (0, -1)]
+				v_len = len(vectors)
+				if v_len > 0:
+					self.vector = vectors[randint(0, v_len - 1)]
+
+			if g.item_is_move and len(self.body) > 1 and old_v[0] * -1 == self.vector[0] and old_v[1] * -1 == self.vector[1]:
+				new_v = self.vector
+				self.vector = old_v
+				ind = 0
+				if old_v[1] != 0:
+					ind = 1
+				self.reverse(new_v, ind)
+
+	def bot_vector_old(self, g):
+		if g.game_over == False:
+			option = randint(0, self.bot_level * self.bot_level * 100)
 			#vectors = [(1, 0), (-1, 0), (0, 1), (0, -1)]
 			vectors = []
 			old_v = self.vector
@@ -241,38 +281,13 @@ class Snake(object):
 	def dextra_ways(g):
 		n = int(WIDTH / SNAKE_SIZE)
 		m = int(HEIGHT / SNAKE_SIZE)
-		distance_mas = [[0] * m for i in range(n)]
+		g.distance_mas = [[0] * m for i in range(n)]
 		control_mas = [[0] * m for i in range(n)]
-		#Snake.get_let_mas(g, control_mas)
-		#vertex = (int(g.apple_koord[0] / SNAKE_SIZE), int(g.apple_koord[1] / SNAKE_SIZE))
-		#
-		control_mas[0][2] = 2
-		control_mas[1][2] = 2
-		control_mas[2][2] = 2
-		vertex = (2, 0)
-		#
+		Snake.get_let_mas(g, control_mas)
+		vertex = (int(g.apple_koord[0] / SNAKE_SIZE), int(g.apple_koord[1] / SNAKE_SIZE))
 		control_mas[vertex[0]][vertex[1]] = 0
-		j = 0
-		print('mas', n, 'x', m, vertex)
-		while j < m:
-			s = ''
-			i = 0
-			while i < n:
-				s = s + ' ' + str(control_mas[i][j])
-				i += 1
-			print(s)
-			j += 1
-		Snake.change_ways(vertex, distance_mas, n, m, control_mas)
-		j = 0
-		print('mas', n, 'x', m, vertex)
-		while j < m:
-			s = ''
-			i = 0
-			while i < n:
-				s = s + ' ' + (str(distance_mas[i][j])).ljust(2)
-				i += 1
-			print(j, '|', s)
-			j += 1
+		
+		Snake.change_ways(vertex, g.distance_mas, n, m, control_mas)
 
 	def get_let_mas(g, let_mas):
 		for sn in GAME.snakes:
@@ -283,12 +298,12 @@ class Snake(object):
 		
 		# забор
 		for fn in g.fence:
-			print('fence', fn)
+			#print('fence', fn)
 			let_mas[int(fn[0] / SNAKE_SIZE)][int(fn[1] / SNAKE_SIZE)] = 2
 
 	def change_ways(vertex, distance_mas, n, m, control_mas):
 		if control_mas[vertex[0]][vertex[1]] != 0:
-			#print('return', vertex, control_mas[vertex[0]][vertex[1]])
+			#print('return', vertex[1], vertex[0])
 			return
 		else:
 			control_mas[vertex[0]][vertex[1]] = 1
@@ -297,35 +312,27 @@ class Snake(object):
 		# up
 		if(vertex[0] > 0):
 			items.append((vertex[0] - 1, vertex[1]))
-			Snake.count_cell(vertex[0] - 1, vertex[1], distance + 1, distance_mas, items)
+			Snake.count_cell(vertex[0] - 1, vertex[1], distance + 1, distance_mas, items, control_mas)
 		# down
 		if(vertex[0] < n - 1):
 			items.append((vertex[0] + 1, vertex[1]))
-			Snake.count_cell(vertex[0] + 1, vertex[1], distance + 1, distance_mas, items)
+			Snake.count_cell(vertex[0] + 1, vertex[1], distance + 1, distance_mas, items, control_mas)
 		# left
 		if(vertex[1] > 0):
 			items.append((vertex[0], vertex[1] - 1))
-			Snake.count_cell(vertex[0], vertex[1] - 1, distance + 1, distance_mas, items)
+			Snake.count_cell(vertex[0], vertex[1] - 1, distance + 1, distance_mas, items, control_mas)
 		# right
 		if(vertex[1] < m - 1):
 			items.append((vertex[0], vertex[1] + 1))
-			Snake.count_cell(vertex[0], vertex[1] + 1, distance + 1, distance_mas, items)
+			Snake.count_cell(vertex[0], vertex[1] + 1, distance + 1, distance_mas, items, control_mas)
 		for item in items:
 			Snake.change_ways(item, distance_mas, n, m, control_mas)
 
-	def count_cell(x, y, distance, distance_mas, items):
-		print('cell', y, x, distance, distance_mas[x][y])
-		j = 0
-		while j < 5:
-			s = ''
-			i = 0
-			while i < 5:
-				s = s + ' ' + (str(distance_mas[i][j])).ljust(2)
-				i += 1
-			print(j, '|', s)
-			j += 1
-		if distance_mas[x][y] == 0 or distance < distance_mas[x][y]:
-			distance_mas[x][y] = distance
-		t.sleep(5)
+	def count_cell(x, y, distance, distance_mas, items, control_mas):
+		if control_mas[x][y] != 2:
+			if distance_mas[x][y] == 0 or distance < distance_mas[x][y]:
+				distance_mas[x][y] = distance
+				# для пересчета соседних заново
+				control_mas[x][y] = 0
 
 GAME = Game()

@@ -144,7 +144,7 @@ class MyGame():
 					#c.coords(sn.body[0]['id'], sn.body[0]['x'], sn.body[0]['y'],
 					#	sn.body[0]['x'] + m.SNAKE_SIZE, sn.body[0]['y'] + m.SNAKE_SIZE)
 		
-		root.after(g.speed * 10, MyGame.next_step)
+		root.after(g.speed, MyGame.next_step)
 
 	def move(snake, new_koord_x, new_koord_y):
 		#print('move')
