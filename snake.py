@@ -25,6 +25,8 @@ class MyGame():
 	item_is_move = BooleanVar()
 	pc_game = BooleanVar()
 	pc_game.set(False)
+	pc_level = IntVar()
+	pc_level.set(2)
 	apple_pic = PhotoImage(file='apple.gif', width=m.APPLE_SIZE, height=m.APPLE_SIZE)
 	kk_pic = PhotoImage(file='kk.gif', width=m.APPLE_SIZE, height=m.APPLE_SIZE)
 	heart_pic = PhotoImage(file='heart.gif', width=m.APPLE_SIZE, height=m.APPLE_SIZE)
@@ -46,6 +48,11 @@ class MyGame():
 	pass_text = None
 	login_btn = None
 	game_type = None
+	bot_label = None
+	bot_count = None
+	easy_level = None
+	middle_level = None
+	difficult_level = None
 
 	scores_lable = None
 
@@ -80,8 +87,15 @@ class MyGame():
 
 	def create_fence():
 		c.delete('fence')
-		for item in g.fence:
-			c.create_image(item[0], item[1], image=MyGame.tree_pic, tags='fence', anchor='nw')
+		#for item in g.fence:
+		#	c.create_image(item[0], item[1], image=MyGame.tree_pic, tags='fence', anchor='nw')
+		i = 40
+		while i < int(m.WIDTH / 2):
+			g.fence.append((i, i))
+			c.create_image(i, i, image=MyGame.tree_pic, tags='fence', anchor='nw')
+			g.fence.append((m.WIDTH - m.SNAKE_SIZE - i, i))
+			c.create_image(m.WIDTH - m.SNAKE_SIZE - i, i, image=MyGame.tree_pic, tags='fence', anchor='nw')
+			i += m.SNAKE_SIZE
 
 	def next_step():
 		for sn in g.snakes:
@@ -105,6 +119,7 @@ class MyGame():
 						mg.create_score(sn.score)
 					mg.create_scores()
 					mg.create_apple()
+					m.Snake.dextra_ways(g)
 				# врезалась
 				elif new_koord['event'] == 2:
 					print('crash', sn.name)
@@ -129,7 +144,7 @@ class MyGame():
 					#c.coords(sn.body[0]['id'], sn.body[0]['x'], sn.body[0]['y'],
 					#	sn.body[0]['x'] + m.SNAKE_SIZE, sn.body[0]['y'] + m.SNAKE_SIZE)
 		
-		root.after(g.speed, MyGame.next_step)
+		root.after(g.speed * 10, MyGame.next_step)
 
 	def move(snake, new_koord_x, new_koord_y):
 		#print('move')
@@ -170,7 +185,12 @@ class MyGame():
 		#	g.game_over_id = c.create_text(m.WIDTH/2, m.HEIGHT/2, anchor='center',
 		#				text='Server error\nScore: ' + str(g.score), font="Arial 20", fill="#990000")
 
-
+	def create_bots():
+		i = 0
+		while i < g.bot_count:
+			m.Snake.add_snake(g, len(g.snakes), 'bot' + str(len(g.snakes)), 3, True, g.bot_level)
+			MySnake.create_snake()
+			i += 1
 
 class MySnake(object):
 	def create_element(tag, x, y, color, is_snake=True, is_oval=False):
@@ -187,10 +207,10 @@ class MySnake(object):
 			t_id = c.create_image(x, y, image=MyGame.kk_pic, anchor='nw', tags=tag)
 		return {'id': t_id, 'x': x, 'y': y}
 
-	def create_bot():
-		bot_snake = g.snakes[len(g.snakes) - 1]
-		el = MySnake.create_element('snakes' + bot_snake.name, bot_snake.body[0]['x'], bot_snake.body[0]['y'], bot_snake.color, True, True)
-		bot_snake.body[0].update({'id': el['id']})
+	def create_snake():
+		new_snake = g.snakes[len(g.snakes) - 1]
+		el = MySnake.create_element('snakes' + new_snake.name, new_snake.body[0]['x'], new_snake.body[0]['y'], new_snake.color, True, True)
+		new_snake.body[0].update({'id': el['id']})
 
 	def change_tail(snake):
 		last = len(snake.body) - 1
@@ -257,23 +277,35 @@ def option_window(connect_error=False):
 	mg.pass_text.insert(END, 'Player1')
 	mg.login_btn = Button(root, text="Войти", fg="red",
 			command=login)
+	mg.bot_label = Label(root,text='Кол-во ботов:')
+	mg.bot_count = Entry(root,width=7,font='Arial 12')
+	mg.bot_count.insert(END, str(g.bot_count))
+	mg.pc_level.set(g.bot_level)
+	mg.easy_level = Radiobutton(root, text="Легкий", variable=mg.pc_level, value=3)
+	mg.middle_level = Radiobutton(root, text="Средний", variable=mg.pc_level, value=2)
+	mg.difficult_level = Radiobutton(root, text="Сложный", variable=mg.pc_level, value=1)
 
-	mg.log_label.grid(row=0,columnspan=4)
-	mg.vs_pc.grid(row=2,column=4,padx=10,sticky="W")
-	mg.ip_label.grid(row=1,column=0,sticky="W")
-	mg.ip_text.grid(row=1,column=1,padx=10)
+	mg.log_label.grid(row=0,columnspan=4,pady=5)
+	mg.vs_pc.grid(row=2,column=4,sticky="W")
+	mg.ip_label.grid(row=1,column=0,padx=5,sticky="W")
+	mg.ip_text.grid(row=1,column=1)
 	mg.port_label.grid(row=1,column=2,sticky="W")
-	mg.port_text.grid(row=1,column=3,padx=10)
-	mg.game_type.grid(row=1,column=4,padx=10,sticky="W")
-	mg.login_label.grid(row=2,column=0,sticky="W")
-	mg.login_text.grid(row=2,column=1,padx=10)
+	mg.port_text.grid(row=1,column=3)
+	mg.game_type.grid(row=1,column=4,sticky="W")
+	mg.login_label.grid(row=2,column=0,padx=5,pady=5,sticky="W")
+	mg.login_text.grid(row=2,column=1)
 	mg.pass_label.grid(row=2,column=2,sticky="W")
-	mg.pass_text.grid(row=2,column=3,padx=10)
-	mg.login_btn.grid(row=0,column=4,padx=10)
+	mg.pass_text.grid(row=2,column=3)
+	mg.bot_label.grid(row=3,column=0,padx=5,sticky="W")
+	mg.bot_count.grid(row=3,column=1)
+	mg.easy_level.grid(row=3,column=2,sticky="E")
+	mg.middle_level.grid(row=3,column=3)
+	mg.difficult_level.grid(row=3,column=4,sticky="W")
+	mg.login_btn.grid(row=0,column=4,padx=5)
 
 	if connect_error:
 		mg.error_label = Label(root,text='Cервер недоступен, проверьте адрес и порт!',fg="red")
-		mg.error_label.grid(row=3,columnspan=5)
+		mg.error_label.grid(row=4,columnspan=5)
 
 def delete_option_window():
 	mg.log_label.grid_remove()
@@ -288,32 +320,38 @@ def delete_option_window():
 	mg.pass_label.grid_remove()
 	mg.pass_text.grid_remove()
 	mg.login_btn.grid_remove()
+	mg.bot_label.grid_remove()
+	mg.bot_count.grid_remove()
+	mg.easy_level.grid_remove()
+	mg.middle_level.grid_remove()
+	mg.difficult_level.grid_remove()
 	if mg.error_label != None:
 		mg.error_label.grid_remove()
 	if mg.incorrect_login != None:
 		mg.incorrect_login.grid_remove()
 
 def login():
-	if MyGame.pc_game.get():
+	if mg.pc_game.get():
 		# игра против ПК
 		delete_option_window()
 		g.item_is_move = mg.item_is_move.get()
+		try:
+			g.bot_count = int(mg.bot_count.get())
+		except:
+			print('not integer bot count')
+		g.bot_level = mg.pc_level.get()
 
 		g.get_apple_koord()
 		mg.create_apple()
-		new_snake = m.Snake(0, mg.login_text.get(), m.START_POSITIONS[len(g.snakes)], 3)
-		el = MySnake.create_element('snakes' + new_snake.name, 0,0, new_snake.color, True, True)
-		new_snake.body[0].update({'id': el['id']})
-		g.snakes.append(new_snake)
-		m.Snake.get_move((new_snake.body[0]['x'], new_snake.body[0]['x']), new_snake.vector)
+		m.Snake.add_snake(g, len(g.snakes), mg.login_text.get(), 3)
+		MySnake.create_snake()
+		#m.Snake.get_move((new_snake.body[0]['x'], new_snake.body[0]['x']), new_snake.vector)
 		# создание ботов
-		i = 0
-		while i < g.bot_count:
-			m.Snake.add_bot(g, len(g.snakes), 1)
-			MySnake.create_bot()
-			i += 1
+		MyGame.create_bots()
 
 		mg.create_scores()
+
+		c.focus_set()
 		
 		MyGame.next_step()
 	else:
@@ -344,9 +382,11 @@ def login():
 			sock.settimeout(10)
 			
 			Thread(target=listen_server, args=[sock]).start()
-		elif MyGame.incorrect_login == None:
-			MyGame.incorrect_login = Label(root,text='Неправильный логин/пароль.',fg='#990000')
-			MyGame.incorrect_login.grid(row=2,columnspan=5)
+		elif mg.incorrect_login == None:
+			if mg.error_label != None:
+				mg.error_label.grid_remove()
+			mg.incorrect_login = Label(root,text='Неправильный логин/пароль.',fg='#990000')
+			mg.incorrect_login.grid(row=4,columnspan=5)
 
 def start_game():
 	c.delete(MyGame.game_over_id)
@@ -436,13 +476,13 @@ def listen_server(sock):
 		g.game_over = True	
 
 c = Canvas(root, width=m.WIDTH, height=m.HEIGHT, bg=m.BACKGROUND)
-c.grid(row=3,columnspan=5,padx=10,pady=0)
+c.grid(row=4,columnspan=5,padx=5,pady=5)
 c.focus_set()
 c.bind("<KeyPress>", key)
 g = m.GAME
 mg = MyGame()
 mg.scores_lable = Canvas(root, width=m.WIDTH, height=m.SNAKE_SIZE + 2, bg='#888')
-mg.scores_lable.grid(row=4,columnspan=5,padx=10,pady=0)
+mg.scores_lable.grid(row=5,columnspan=5,padx=5)
 
 start_game()
 
