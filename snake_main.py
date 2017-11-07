@@ -187,34 +187,64 @@ class Snake(object):
 		if g.game_over == False:
 			option = randint(0, self.bot_level * self.bot_level * 100)
 			old_v = self.vector
-			if option < 90 or (option < 550 and option > 190):
+			if option < 98 or (option < 835 and option > 118):
 				res = 10000
 				vect = self.vector
+				t_len = len(self.body)
 				x = int(self.body[0]['x'] / SNAKE_SIZE)
 				y = int(self.body[0]['y'] / SNAKE_SIZE)
+				l_x = int(self.body[t_len - 1]['x'] / SNAKE_SIZE)
+				l_y = int(self.body[t_len - 1]['y'] / SNAKE_SIZE)
 				n = int(WIDTH / SNAKE_SIZE)
 				m = int(HEIGHT / SNAKE_SIZE)
-
-				if x > 0 and g.distance_mas[x - 1][y] < res:
-					res = g.distance_mas[x - 1][y]
-					vect = (-1, 0)
-				if x < n - 1 and g.distance_mas[x + 1][y] < res:
-					res = g.distance_mas[x + 1][y]
-					vect = (1, 0)
-				if y > 0 and g.distance_mas[x][y - 1] < res:
-					res = g.distance_mas[x][y - 1]
-					vect = (0, -1)
-				if y < m - 1 and g.distance_mas[x][y + 1] < res:
-					res = g.distance_mas[x][y + 1]
-					vect = (0, 1)
+				vertex = (int(g.apple_koord[0] / SNAKE_SIZE), int(g.apple_koord[1] / SNAKE_SIZE))
+				
+				if x > 0 and g.distance_mas[x - 1][y] > 0 and self.vector != (1, 0):
+					#print('1-1', x - 1, y, g.apple_koord)
+					if vertex[0] == x - 1 and vertex[1] == y:
+						self.vector = (-1, 0)
+						return True
+					elif g.distance_mas[x - 1][y] < res or (g.distance_mas[x - 1][y] == res
+							and self.vector == (-1, 0)):
+						res = g.distance_mas[x - 1][y]
+						vect = (-1, 0)
+				if x < n - 1 and g.distance_mas[x + 1][y] > 0 and self.vector != (-1, 0):
+					#print('2-1', x + 1, y, g.apple_koord)
+					if vertex[0] == x + 1 and vertex[1] == y:
+						self.vector = (1, 0)
+						return True
+					elif g.distance_mas[x + 1][y] < res or (g.distance_mas[x + 1][y] == res
+							and self.vector == (1, 0)):
+						res = g.distance_mas[x + 1][y]
+						vect = (1, 0)
+				if y > 0 and g.distance_mas[x][y - 1] > 0 and self.vector != (0, 1):
+					#print('3-1', x, y - 1, g.apple_koord)
+					if vertex[0] == x and vertex[1] == y - 1:
+						self.vector = (0, -1)
+						return True
+					elif g.distance_mas[x][y - 1] < res or (g.distance_mas[x][y - 1] == res
+							and self.vector == (0, -1)):
+						res = g.distance_mas[x][y - 1]
+						vect = (0, -1)
+				if y < m - 1 and g.distance_mas[x][y + 1] > 0 and self.vector != (0, -1):
+					#print('4-1', x, y + 1, g.apple_koord)
+					if vertex[0] == x and vertex[1] == y + 1:
+						self.vector = (0, 1)
+						return True
+					elif g.distance_mas[x][y + 1] < res or (g.distance_mas[x][y + 1] == res
+							and self.vector == (0, 1)):
+						res = g.distance_mas[x][y + 1]
+						vect = (0, 1)
 				self.vector = vect
 			else:
+				print('not optimal')
 				vectors = [(1, 0), (-1, 0), (0, 1), (0, -1)]
 				v_len = len(vectors)
 				if v_len > 0:
 					self.vector = vectors[randint(0, v_len - 1)]
 
 			if g.item_is_move and len(self.body) > 1 and old_v[0] * -1 == self.vector[0] and old_v[1] * -1 == self.vector[1]:
+				print('reverse')
 				new_v = self.vector
 				self.vector = old_v
 				ind = 0
@@ -287,7 +317,22 @@ class Snake(object):
 		vertex = (int(g.apple_koord[0] / SNAKE_SIZE), int(g.apple_koord[1] / SNAKE_SIZE))
 		control_mas[vertex[0]][vertex[1]] = 0
 		
-		Snake.change_ways(vertex, g.distance_mas, n, m, control_mas)
+		#j = 0
+		#while j < m:
+		#	i = 0
+		#	res = ""
+		#	while i < n:
+		#		k = str(control_mas[i][j])
+		#		if k == "0":
+		#			k = "-"
+		#		if (i, j) == vertex:
+		#			k = "a"
+		#		res = res + k + " "
+		#		i += 1
+		#	print((str(j)).ljust(2), '|', res)
+		#	j += 1
+		
+		Snake.change_ways((vertex,), g.distance_mas, n, m, control_mas)
 
 	def get_let_mas(g, let_mas):
 		for sn in GAME.snakes:
@@ -298,38 +343,44 @@ class Snake(object):
 		
 		# забор
 		for fn in g.fence:
-			#print('fence', fn)
 			let_mas[int(fn[0] / SNAKE_SIZE)][int(fn[1] / SNAKE_SIZE)] = 2
 
-	def change_ways(vertex, distance_mas, n, m, control_mas):
-		if control_mas[vertex[0]][vertex[1]] != 0:
-			#print('return', vertex[1], vertex[0])
-			return
-		else:
-			control_mas[vertex[0]][vertex[1]] = 1
+	def change_ways(vertexes, distance_mas, n, m, control_mas):
+		GAME.bot_count += 1
 		items = []
-		distance = distance_mas[vertex[0]][vertex[1]]
-		# up
-		if(vertex[0] > 0):
-			items.append((vertex[0] - 1, vertex[1]))
-			Snake.count_cell(vertex[0] - 1, vertex[1], distance + 1, distance_mas, items, control_mas)
-		# down
-		if(vertex[0] < n - 1):
-			items.append((vertex[0] + 1, vertex[1]))
-			Snake.count_cell(vertex[0] + 1, vertex[1], distance + 1, distance_mas, items, control_mas)
-		# left
-		if(vertex[1] > 0):
-			items.append((vertex[0], vertex[1] - 1))
-			Snake.count_cell(vertex[0], vertex[1] - 1, distance + 1, distance_mas, items, control_mas)
-		# right
-		if(vertex[1] < m - 1):
-			items.append((vertex[0], vertex[1] + 1))
-			Snake.count_cell(vertex[0], vertex[1] + 1, distance + 1, distance_mas, items, control_mas)
-		for item in items:
-			Snake.change_ways(item, distance_mas, n, m, control_mas)
+		#print('vertexes', vertexes)
+		for vertex in vertexes:
+			#print('vert', vertex)
+			if control_mas[vertex[0]][vertex[1]] != 0:
+				continue
+			control_mas[vertex[0]][vertex[1]] = 1
+
+			distance = distance_mas[vertex[0]][vertex[1]]
+			# up
+			if(vertex[0] > 0):
+				items.append((vertex[0] - 1, vertex[1]))
+				Snake.count_cell(vertex[0] - 1, vertex[1], distance + 1, distance_mas, items, control_mas)
+			# down
+			if(vertex[0] < n - 1):
+				items.append((vertex[0] + 1, vertex[1]))
+				Snake.count_cell(vertex[0] + 1, vertex[1], distance + 1, distance_mas, items, control_mas)
+			# left
+			if(vertex[1] > 0):
+				items.append((vertex[0], vertex[1] - 1))
+				Snake.count_cell(vertex[0], vertex[1] - 1, distance + 1, distance_mas, items, control_mas)
+			# right
+			if(vertex[1] < m - 1):
+				items.append((vertex[0], vertex[1] + 1))
+				Snake.count_cell(vertex[0], vertex[1] + 1, distance + 1, distance_mas, items, control_mas)
+		
+		if len(items) > 0:
+			Snake.change_ways(items, distance_mas, n, m, control_mas)
+		
+		GAME.bot_count -= 1
 
 	def count_cell(x, y, distance, distance_mas, items, control_mas):
 		if control_mas[x][y] != 2:
+			j = 0
 			if distance_mas[x][y] == 0 or distance < distance_mas[x][y]:
 				distance_mas[x][y] = distance
 				# для пересчета соседних заново

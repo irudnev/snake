@@ -352,6 +352,8 @@ def login():
 		mg.create_scores()
 
 		c.focus_set()
+
+		m.Snake.dextra_ways(g)
 		
 		MyGame.next_step()
 	else:
