@@ -32,7 +32,12 @@ class MyGame():
 	heart_pic = PhotoImage(file='heart.gif', width=m.APPLE_SIZE, height=m.APPLE_SIZE)
 	tree_pic = PhotoImage(file='tree.gif', width=m.APPLE_SIZE, height=m.APPLE_SIZE)
 	body_pic = PhotoImage(file='body.gif', width=m.APPLE_SIZE, height=m.APPLE_SIZE)
-	head_pic = PhotoImage(file='head.gif', width=m.APPLE_SIZE, height=m.APPLE_SIZE)
+	head_pic = [PhotoImage(file='head1.gif', width=m.APPLE_SIZE, height=m.APPLE_SIZE),
+				PhotoImage(file='head2.gif', width=m.APPLE_SIZE, height=m.APPLE_SIZE),
+				PhotoImage(file='head3.gif', width=m.APPLE_SIZE, height=m.APPLE_SIZE),
+				PhotoImage(file='head4.gif', width=m.APPLE_SIZE, height=m.APPLE_SIZE),
+				PhotoImage(file='head5.gif', width=m.APPLE_SIZE, height=m.APPLE_SIZE),
+				PhotoImage(file='head6.gif', width=m.APPLE_SIZE, height=m.APPLE_SIZE)]
 
 	incorrect_login = None
 	error_label = None
@@ -59,6 +64,7 @@ class MyGame():
 	def create_apple(self):
 		c.delete(self.apple_id)
 		self.apple_id = c.create_image(g.apple_koord[0], g.apple_koord[1], image=self.apple_pic, anchor='nw')
+		g.level_apple_count -= 1
 
 	def create_score(self, score):
 		c.delete(self.score_id)
@@ -87,15 +93,15 @@ class MyGame():
 
 	def create_fence():
 		c.delete('fence')
-		#for item in g.fence:
-		#	c.create_image(item[0], item[1], image=MyGame.tree_pic, tags='fence', anchor='nw')
-		i = 40
-		while i < int(m.WIDTH / 2):
-			g.fence.append((i, i))
-			c.create_image(i, i, image=MyGame.tree_pic, tags='fence', anchor='nw')
-			g.fence.append((m.WIDTH - m.SNAKE_SIZE - i, i))
-			c.create_image(m.WIDTH - m.SNAKE_SIZE - i, i, image=MyGame.tree_pic, tags='fence', anchor='nw')
-			i += m.SNAKE_SIZE
+		for item in g.fence:
+			c.create_image(item[0], item[1], image=MyGame.tree_pic, tags='fence', anchor='nw')
+		#i = 40
+		#while i < int(m.WIDTH / 2):
+		#	g.fence.append((i, i))
+		#	c.create_image(i, i, image=MyGame.tree_pic, tags='fence', anchor='nw')
+		#	g.fence.append((m.WIDTH - m.SNAKE_SIZE - i, i))
+		#	c.create_image(m.WIDTH - m.SNAKE_SIZE - i, i, image=MyGame.tree_pic, tags='fence', anchor='nw')
+		#	i += m.SNAKE_SIZE
 
 	def next_step():
 		for sn in g.snakes:
@@ -108,7 +114,7 @@ class MyGame():
 				new_koord = sn.snake_move(g)
 				# съела яблоко
 				if new_koord['event'] == 1:
-					el = MySnake.create_element('snakes' + sn.name, new_koord['x'], new_koord['y'], sn.color, True, True)
+					el = MySnake.create_element('snakes' + sn.name, new_koord['x'], new_koord['y'], sn.color, True, True, sn.id)
 					sn.body[0].update({'id': el['id']})
 
 					c.delete(sn.body[1]['id'])
@@ -119,13 +125,18 @@ class MyGame():
 						mg.create_score(sn.score)
 					mg.create_scores()
 					mg.create_apple()
+					if g.level_apple_count == 0:
+						for i in range(10):
+							g.fence.append(m.Game.calc_apple_koord())
+						MyGame.create_fence()
+						g.level_apple_count = 10
 					m.Snake.dextra_ways(g)
 				# врезалась
 				elif new_koord['event'] == 2:
 					print('crash', sn.name)
 					c.delete('snakes' + sn.name)
 					if sn.lives > 0:
-						el = MySnake.create_element('snakes' + sn.name, sn.body[0]['x'], sn.body[0]['y'], sn.color, True, True)
+						el = MySnake.create_element('snakes' + sn.name, sn.body[0]['x'], sn.body[0]['y'], sn.color, True, True, sn.id)
 						sn.body.clear()
 						sn.body.append(el)
 						if not sn.is_bot:
@@ -188,15 +199,16 @@ class MyGame():
 	def create_bots():
 		i = 0
 		while i < g.bot_count:
-			m.Snake.add_snake(g, len(g.snakes), 'bot' + str(len(g.snakes)), 3, True, g.bot_level)
+			m.Snake.add_snake(g, len(g.snakes), 'bot' + str(len(g.snakes)), 666, True, g.bot_level)
 			MySnake.create_snake()
 			i += 1
 
 class MySnake(object):
-	def create_element(tag, x, y, color, is_snake=True, is_oval=False):
+	def create_element(tag, x, y, color, is_snake=True, is_oval=False, ind=0):
 		if is_snake:
 			if is_oval:
-				t_id = c.create_image(x, y, image=MyGame.head_pic, anchor='nw', tags=tag)
+				#t_id = c.create_image(x, y, image=MyGame.head_pic, anchor='nw', tags=tag)
+				t_id = c.create_image(x, y, image=MyGame.head_pic[ind], anchor='nw', tags=tag)
 				#t_id = c.create_oval(x, y, x + m.SNAKE_SIZE, y + m.SNAKE_SIZE,
 				#		fill=color, tags=tag)
 			else:
@@ -209,7 +221,7 @@ class MySnake(object):
 
 	def create_snake():
 		new_snake = g.snakes[len(g.snakes) - 1]
-		el = MySnake.create_element('snakes' + new_snake.name, new_snake.body[0]['x'], new_snake.body[0]['y'], new_snake.color, True, True)
+		el = MySnake.create_element('snakes' + new_snake.name, new_snake.body[0]['x'], new_snake.body[0]['y'], new_snake.color, True, True, new_snake.id)
 		new_snake.body[0].update({'id': el['id']})
 
 	def change_tail(snake):
@@ -337,6 +349,9 @@ def login():
 		g.item_is_move = mg.item_is_move.get()
 		try:
 			g.bot_count = int(mg.bot_count.get())
+			max_count = len(m.SNAKE_COLORS) - 1
+			if g.bot_count > max_count:
+				g.bot_count = max_count
 		except:
 			print('not integer bot count')
 		g.bot_level = mg.pc_level.get()

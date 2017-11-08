@@ -23,11 +23,18 @@ class Game():
 	fence = []
 	#fence = [(120, 20), (360, 120)]
 	apple_koord = (0, 0)
+	level_apple_count = 10
 	speed = 100
 	item_is_move = True
 	bot_count = 1
-	bot_level = 3
+	bot_level = 1
+	bot_max_level = 3
 	distance_mas = []
+	# задается вероятность оптимального хода
+	bot_rnd_level = 100 # random from [bot_level * bot_level * bot_rnd_level]
+	option_hard = round(1 * (1 * 1 * bot_rnd_level + 1)) # 97 %
+	option_middle = (round(0.93 * (2 * 2 * bot_rnd_level + 1)) - (2 * 2 * bot_rnd_level + 1)) * -1 + option_hard # 93 %
+	option_easy = round(0.88 * (3 * 3 * bot_rnd_level + 1)) + option_middle - option_hard # 88 %
 
 	def calc_apple_koord():
 		return (APPLE_SIZE * randint(0, int((WIDTH - APPLE_SIZE)/APPLE_SIZE)),
@@ -68,7 +75,7 @@ class Snake(object):
 	lives = 3
 	is_reverse = False
 	is_bot = False
-	bot_level = 0
+	bot_level = 1
 
 	def __init__(self, id, name, koord, lives=3, index=0):
 		self.id = id
@@ -185,9 +192,9 @@ class Snake(object):
 
 	def bot_vector(self, g):
 		if g.game_over == False:
-			option = randint(0, self.bot_level * self.bot_level * 100)
+			option = randint(0, self.bot_level * self.bot_level * g.bot_rnd_level)
 			old_v = self.vector
-			if option < 98 or (option < 835 and option > 118):
+			if option < g.option_hard or (option < g.option_easy and option > g.option_middle):
 				res = 10000
 				vect = self.vector
 				t_len = len(self.body)
@@ -204,7 +211,7 @@ class Snake(object):
 					if vertex[0] == x - 1 and vertex[1] == y:
 						self.vector = (-1, 0)
 						return True
-					elif g.distance_mas[x - 1][y] < res or (g.distance_mas[x - 1][y] == res
+					elif not Snake.is_crash((self.body[0]['x'] + SNAKE_SIZE * -1, self.body[0]['y'])) and g.distance_mas[x - 1][y] < res or (g.distance_mas[x - 1][y] == res
 							and self.vector == (-1, 0)):
 						res = g.distance_mas[x - 1][y]
 						vect = (-1, 0)
@@ -213,7 +220,7 @@ class Snake(object):
 					if vertex[0] == x + 1 and vertex[1] == y:
 						self.vector = (1, 0)
 						return True
-					elif g.distance_mas[x + 1][y] < res or (g.distance_mas[x + 1][y] == res
+					elif not Snake.is_crash((self.body[0]['x'] + SNAKE_SIZE, self.body[0]['y'])) and g.distance_mas[x + 1][y] < res or (g.distance_mas[x + 1][y] == res
 							and self.vector == (1, 0)):
 						res = g.distance_mas[x + 1][y]
 						vect = (1, 0)
@@ -222,7 +229,7 @@ class Snake(object):
 					if vertex[0] == x and vertex[1] == y - 1:
 						self.vector = (0, -1)
 						return True
-					elif g.distance_mas[x][y - 1] < res or (g.distance_mas[x][y - 1] == res
+					elif not Snake.is_crash((self.body[0]['x'], self.body[0]['y'] + SNAKE_SIZE * -1)) and g.distance_mas[x][y - 1] < res or (g.distance_mas[x][y - 1] == res
 							and self.vector == (0, -1)):
 						res = g.distance_mas[x][y - 1]
 						vect = (0, -1)
@@ -231,13 +238,12 @@ class Snake(object):
 					if vertex[0] == x and vertex[1] == y + 1:
 						self.vector = (0, 1)
 						return True
-					elif g.distance_mas[x][y + 1] < res or (g.distance_mas[x][y + 1] == res
+					elif not Snake.is_crash((self.body[0]['x'], self.body[0]['y'] + SNAKE_SIZE)) and g.distance_mas[x][y + 1] < res or (g.distance_mas[x][y + 1] == res
 							and self.vector == (0, 1)):
 						res = g.distance_mas[x][y + 1]
 						vect = (0, 1)
 				self.vector = vect
 			else:
-				print('not optimal')
 				vectors = [(1, 0), (-1, 0), (0, 1), (0, -1)]
 				v_len = len(vectors)
 				if v_len > 0:
@@ -335,11 +341,11 @@ class Snake(object):
 		Snake.change_ways((vertex,), g.distance_mas, n, m, control_mas)
 
 	def get_let_mas(g, let_mas):
-		for sn in GAME.snakes:
-			i = 0
-			while i < len(sn.body):
-				let_mas[int(sn.body[i]['x'] / SNAKE_SIZE)][int(sn.body[i]['y'] / SNAKE_SIZE)] = 2
-				i += 1
+		#for sn in GAME.snakes:
+		#	i = 0
+		#	while i < len(sn.body):
+		#		let_mas[int(sn.body[i]['x'] / SNAKE_SIZE)][int(sn.body[i]['y'] / SNAKE_SIZE)] = 2
+		#		i += 1
 		
 		# забор
 		for fn in g.fence:
