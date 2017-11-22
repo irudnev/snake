@@ -40,7 +40,7 @@ def key(name, snake):
 	elif(name == "space"):
 		if(m.Game.speed == 10000000):
 			m.Game.speed = 100
-			m.Snake.get_move((snake.body[0]['x'], snake.body[0]['y']), snake.vector)
+			m.Snake.get_move((snake.body[0]['x'], snake.body[0]['y']), snake.vector, g)
 		else:
 			m.Game.speed = 10000000
 	elif(name == "Return"):
@@ -49,9 +49,11 @@ def key(name, snake):
 def client_key_listen(client, new_snake):
 	try:
 		while g.game_over == False:
+			#print('key listen before')
 			data = client.recv(1024)
 			if not data:
-				print('not data')
+				pass
+				#print('not data')
 				#client.send(b'ff')
 			else:
 				entry = pickle.loads(data)
@@ -62,6 +64,7 @@ def client_key_listen(client, new_snake):
 				elif way:
 					#print(way)
 					key(way, new_snake)
+			#print('key listen after')
 	except:
 		print('client_key_listen error')
 
@@ -77,8 +80,10 @@ def check_login(log, pas):
 
 def client_listen(s):
 	try:
-		while len(g.clients) <= m.CLIENTS_COUNT:
+		while s and len(g.clients) <= m.CLIENTS_COUNT:
+			print('listen before')
 			client, client_addr = s.accept()
+			print('listen after')
 			client.settimeout(60)
 			print(client_addr)
 			data = client.recv(1024)
@@ -90,6 +95,21 @@ def client_listen(s):
 			it_move = entry.get('move', None)
 			if(it_move != None and len(g.clients) == 0):
 				g.item_is_move = it_move
+				print('change move')
+			bots = entry.get('bot', None)
+			if(bots != None and len(g.clients) == 0):
+				try:
+					g.bot_count = int(bots)
+					print('change b count')
+				except:
+					g.bot_count = 0
+			b_lvl = entry.get('b_lvl', None)
+			if(b_lvl != None and len(g.clients) == 0):
+				try:
+					g.bot_level = int(b_lvl)
+					print('change b level')
+				except:
+					g.bot_level = 0
 
 			#user = User.objects.get(username=log)
 
@@ -105,21 +125,32 @@ def client_listen(s):
 				if way and way=='Escape':
 					continue
 			
-			if g.item_is_move:
-				client.send(b'mok')
-			else:
-				client.send(b'nok')
-			client.settimeout(15)
+			entry = {'move':g.item_is_move, 'bot': g.bot_count, 'b_lvl': g.bot_level}
+			data = pickle.dumps(entry)
+			client.send(data)
+			#client.settimeout(30)
 
 			#cl_id = uuid.uuid4()
-			cl_id = len(g.snakes) + 1
+			cl_id = len(g.snakes)
 			#entry = {'id': cl_id}
 			print('id', cl_id)
 
+			for cl in g.clients:
+				if cl['name'] == log:
+					log = log + "1"
+					break
+
 			g.clients.append({'id': cl_id, 'name': log, 'client': client, 'addr': client_addr})
 
-			new_snake = m.Snake(cl_id, log, m.START_POSITIONS[len(g.snakes)])
+			new_snake = m.Snake(cl_id, log, m.START_POSITIONS[len(g.snakes)], 3, cl_id)
 			g.snakes.append(new_snake)
+
+			if len(g.snakes) == 1:
+				i = 0
+				while i < g.bot_count:
+					m.Snake.add_snake(g, len(g.snakes), 'bot' + str(len(g.snakes)), 3, True, g.bot_level)
+					i += 1
+			m.Snake.dextra_ways(g)
 			
 			Thread(target=client_key_listen, args=(client, new_snake)).start()
 	except exc_sock_timeout:
@@ -130,76 +161,113 @@ def client_listen(s):
 			s.close()
 	except Exception as inst:
 		print('client_listen error', inst)
-		g.game_over = True
-		s.close()
+		print('sock', s)
+		#g.game_over = True
+		s = None
 
 def start_game():
-	g.game_over = False
-	#g.snake = []
-	g.apple_koord = (0, 0)
-	g.get_apple_koord()
+	while True:
+		g.game_over = False
+		#g.snake = []
+		g.apple_koord = (0, 0)
+		g.get_apple_koord()
+		g.fortune.clear()
+		g.fortune.append(m.Game.calc_apple_koord())
+		s = socket()
 
-	with s:
-		s.bind(t_addr)
-		s.settimeout(300)
-		s.listen()
-		#while True:
-		#	client, client_addr = s.accept()
-		#	client.settimeout(15)
-		#	print(client_addr)
-		#	data = client.recv(1024)
-		#	entry = pickle.loads(data)
-		#	cl_name = entry.get('name', None)
-		#	print('NAME', cl_name)
-
-		#	#cl_id = uuid.uuid4()
-		#	cl_id = len(g.snakes) + 1
-		#	#entry = {'id': cl_id}
-		#	print('id', cl_id)
-
-		#	new_snake = Snake(cl_id, cl_name, (0, 0))
-		#	g.snakes.append(new_snake)
-
-		#	Thread(target=client_key_listen, args=(client, new_snake)).start()
-
-			#data = pickle.dumps(new_snake.body)
-			#client.send(data)
-			
+		with s:
+			s.bind(t_addr)
+			s.settimeout(300)
+			s.listen()
 			#while True:
-		Thread(target=client_listen, args = (s,)).start()
+			#	client, client_addr = s.accept()
+			#	client.settimeout(15)
+			#	print(client_addr)
+			#	data = client.recv(1024)
+			#	entry = pickle.loads(data)
+			#	cl_name = entry.get('name', None)
+			#	print('NAME', cl_name)
 
-		i = 0
-		exception_count = 0
-		max_score = 0
-		while max_score < 1000:
-			i += 1
-			for sn in g.snakes:
-				new_koord = sn.snake_move(g)
-				if sn.score > max_score:
-					max_score = sn.score
-			for sn in g.snakes:
-				try:
-					entry = {'apple_koord': g.apple_koord, 'id': sn.id, 'name': sn.name, 'snakes': g.snakes}
-					#print('entry', sn.body)
-					data = pickle.dumps(entry)
-					g.clients[sn.id - 1]['client'].send(data)
-					exception_count = 0
-					sn.is_reverse = False
-				except:
-					print('except', 'id', sn.id)
-					g.snakes.remove(sn)
-					exception_count += 1
-			#if g.game_over or exception_count > 5:
-			#	g.game_over = True
-			#	print('close sock from startgame', g.game_over, exception_count > 5)
-			#	s.close()
+			#	#cl_id = uuid.uuid4()
+			#	cl_id = len(g.snakes) + 1
+			#	#entry = {'id': cl_id}
+			#	print('id', cl_id)
+
+			#	new_snake = Snake(cl_id, cl_name, (0, 0))
+			#	g.snakes.append(new_snake)
+
+			#	Thread(target=client_key_listen, args=(client, new_snake)).start()
+
+				#data = pickle.dumps(new_snake.body)
+				#client.send(data)
+				
+				#while True:
+			Thread(target=client_listen, args = (s,)).start()
+
+			i = 0
+			exception_count = 0
+			max_score = 0
+			while max_score < 250:
+				i += 1
+				for sn in g.snakes:
+					if not sn.sn_game_over and len(sn.body) > 0:
+						if sn.is_bot:
+							sn.bot_vector(g)
+						#print('before', sn.name, sn.body, g.game_over)
+						new_koord = sn.snake_move(g)
+						if new_koord['event'] == 4:
+							g.fortune.clear()
+							g.fortune.append(m.Game.calc_apple_koord())
+						#print('after', sn.name, sn.body, new_koord)
+						if sn.score > max_score:
+							max_score = sn.score
+				for sn in g.snakes:
+					try:
+						if not sn.is_bot:
+							entry = {'apple_koord': g.apple_koord, 'id': sn.id, 'name': sn.name, 'snakes': g.snakes, 'fortune': g.fortune}
+							#print('entry', sn.body)
+							data = pickle.dumps(entry)
+							#print('send to', sn.id, len(g.clients))
+							# исправить: не всегда id змейки будет порядком клиента
+							for cl in g.clients:
+								if cl['name'] == sn.name:
+									cl['client'].send(data)
+									break
+							#g.clients[sn.id]['client'].send(data)
+						exception_count = 0
+						sn.is_reverse = False
+					except:
+						#print('except', 'id', sn.id)
+						for cl in g.clients:
+							if cl['name'] == sn.name:
+								g.clients.remove(cl)
+								break
+						m.SNAKE_COLORS.append(sn.color)
+						g.snakes.remove(sn)
+						exception_count += 1
+				#if g.game_over or exception_count > 5:
+				#	g.game_over = True
+				#	print('close sock from startgame', g.game_over, exception_count > 5)
+				#	s.close()
+				#	break;
+
+				#t.sleep(g.speed/1000)
+				t.sleep(g.speed/1000)
+				#client.sendall(data.upper())
+			#	t.sleep(5)
 			#	break;
-
-			#t.sleep(g.speed/10000)
-			t.sleep(0.1)
-			#client.sendall(data.upper())
-		#	t.sleep(5)
-		#	break;
+			else:
+				s = None
+				entry = {'end': 1}
+				data = pickle.dumps(entry)
+				for sn in g.snakes:
+					m.SNAKE_COLORS.append(sn.color)
+				for cl in g.clients:
+					cl['client'].send(data)
+				print('del snakes')
+				g.snakes.clear()
+				g.clients.clear()
+				g.game_over = True
 
 s = socket()
 t_addr = ('0.0.0.0', 9090)

@@ -11,6 +11,7 @@ HEIGHT = 400
 BACKGROUND = "#ccd5cc"
 SNAKE_SIZE = 20
 APPLE_SIZE = SNAKE_SIZE
+MAX_PLAYERS = 6
 SNAKE_COLORS = ["#E74C3C", "#F1C40F", "#2980B9", "#72BAAC", "#E67E22", "#8B4D93"]
 START_POSITIONS = [(0, 100), (WIDTH - SNAKE_SIZE, 100), (0, 20), (WIDTH - SNAKE_SIZE, 20), (0, 180), (WIDTH - SNAKE_SIZE, 180)]
 SNAKE_VECTORS = [(1, 0), (-1, 0), (1, 0), (-1, 0), (1, 0), (-1, 0)]
@@ -22,17 +23,18 @@ class Game():
 	snakes = []
 	fence = []
 	#fence = [(120, 20), (360, 120)]
+	fortune = [(120, 20)]
 	apple_koord = (0, 0)
 	level_apple_count = 10
 	speed = 100
 	item_is_move = True
-	bot_count = 1
+	bot_count = 0
 	bot_level = 1
 	bot_max_level = 3
 	distance_mas = []
 	# задается вероятность оптимального хода
 	bot_rnd_level = 100 # random from [bot_level * bot_level * bot_rnd_level]
-	option_hard = round(1 * (1 * 1 * bot_rnd_level + 1)) # 97 %
+	option_hard = round(0.97 * (1 * 1 * bot_rnd_level + 1)) # 97 %
 	option_middle = (round(0.93 * (2 * 2 * bot_rnd_level + 1)) - (2 * 2 * bot_rnd_level + 1)) * -1 + option_hard # 93 %
 	option_easy = round(0.88 * (3 * 3 * bot_rnd_level + 1)) + option_middle - option_hard # 88 %
 
@@ -61,11 +63,12 @@ class Game():
 			if sn.sn_game_over == False and not sn.is_bot:
 				g_over = False
 		if g_over:
+			print('check game gameover')
 			self.game_over = True
 
 class Snake(object):
 	name = "anonim"
-	color = SNAKE_COLORS[len(Game.snakes)]
+	color = SNAKE_COLORS[len(SNAKE_COLORS) - 1]
 	id = 0
 	vector = (1 , 0)
 	body = []
@@ -81,7 +84,7 @@ class Snake(object):
 		self.id = id
 		self.name = name
 		self.body = []
-		self.color = SNAKE_COLORS[index]
+		self.color = SNAKE_COLORS.pop()
 		self.vector = SNAKE_VECTORS[index]
 		self.add_snake_len(koord[0], koord[1])
 		self.lives = lives
@@ -107,6 +110,14 @@ class Snake(object):
 		# врезалась в забор
 		for fn in GAME.fence:
 			if(koords[0] == fn[0] and koords[1] == fn[1]):
+				return True
+
+		return False
+
+	def is_fortune(koords):
+		# проверка удачи
+		if len(GAME.fortune) > 0:
+			if(koords[0] == GAME.fortune[0][0] and koords[1] == GAME.fortune[0][1]):
 				return True
 
 		return False
@@ -140,17 +151,20 @@ class Snake(object):
 			self.sn_game_over = True
 			GAME.check_game()
 
-	def get_move(koords, vector):
-		if GAME.game_over == False: # and self.sn_game_over == False:
+	def get_move(koords, vector, t_game):
+		if t_game.game_over == False: # and self.sn_game_over == False:
 			new_koord = (koords[0] + SNAKE_SIZE * vector[0],
 					koords[1] + SNAKE_SIZE * vector[1])
 
 			# съела яблоко
-			if(new_koord[0] == GAME.apple_koord[0] and new_koord[1] == GAME.apple_koord[1]):
+			if(new_koord[0] == t_game.apple_koord[0] and new_koord[1] == t_game.apple_koord[1]):
 				return {'x': new_koord[0], 'y': new_koord[1], 'event': 1}
 			# врезалась
 			elif Snake.is_crash(new_koord):
 				return {'x': 0, 'y': 0, 'event': 2}
+			# проверка удачи
+			elif Snake.is_fortune(new_koord):
+				return {'x': new_koord[0], 'y': new_koord[1], 'event': 4}
 			# двигается
 			else:
 				return {'x': new_koord[0], 'y': new_koord[1], 'event': 0}
@@ -158,7 +172,7 @@ class Snake(object):
 		return {'x': 0, 'y': 0, 'event': 3}
 
 	def snake_move(self, t_game):
-		new_koord = Snake.get_move((self.body[0]['x'], self.body[0]['y']), self.vector)
+		new_koord = Snake.get_move((self.body[0]['x'], self.body[0]['y']), self.vector, t_game)
 		# съела яблоко
 		if new_koord['event'] == 1:
 			self.add_snake_len(new_koord['x'], new_koord['y'])
@@ -167,11 +181,18 @@ class Snake(object):
 			if not t_game.item_is_move:
 				self.body[1]['x'] = new_koord['x']
 				self.body[1]['y'] = new_koord['y']
+			Snake.dextra_ways(t_game)
 		# врезалась
 		elif new_koord['event'] == 2:
 			self.check_lives()
-		# двигается
-		elif new_koord['event'] == 0:
+		# двигается или проверка удачи
+		elif new_koord['event'] == 0 or new_koord['event'] == 4:
+			# проверка удачи
+			if new_koord['event'] == 4:
+				if randint(0, 1) == 0:
+					self.score = int(self.score / 2)
+				else:
+					self.score = int(self.score * 2)
 			if t_game.item_is_move:
 				i = len(self.body) - 1
 				while i > 0:
@@ -195,62 +216,75 @@ class Snake(object):
 			option = randint(0, self.bot_level * self.bot_level * g.bot_rnd_level)
 			old_v = self.vector
 			if option < g.option_hard or (option < g.option_easy and option > g.option_middle):
+				#print('choose vect', self.vector, int(self.body[0]['y'] / SNAKE_SIZE), int(self.body[0]['x'] / SNAKE_SIZE))
 				res = 10000
 				vect = self.vector
 				t_len = len(self.body)
-				x = int(self.body[0]['x'] / SNAKE_SIZE)
-				y = int(self.body[0]['y'] / SNAKE_SIZE)
-				l_x = int(self.body[t_len - 1]['x'] / SNAKE_SIZE)
-				l_y = int(self.body[t_len - 1]['y'] / SNAKE_SIZE)
-				n = int(WIDTH / SNAKE_SIZE)
-				m = int(HEIGHT / SNAKE_SIZE)
-				vertex = (int(g.apple_koord[0] / SNAKE_SIZE), int(g.apple_koord[1] / SNAKE_SIZE))
 				
-				if x > 0 and g.distance_mas[x - 1][y] > 0 and self.vector != (1, 0):
-					#print('1-1', x - 1, y, g.apple_koord)
-					if vertex[0] == x - 1 and vertex[1] == y:
-						self.vector = (-1, 0)
-						return True
-					elif not Snake.is_crash((self.body[0]['x'] + SNAKE_SIZE * -1, self.body[0]['y'])) and g.distance_mas[x - 1][y] < res or (g.distance_mas[x - 1][y] == res
-							and self.vector == (-1, 0)):
-						res = g.distance_mas[x - 1][y]
-						vect = (-1, 0)
-				if x < n - 1 and g.distance_mas[x + 1][y] > 0 and self.vector != (-1, 0):
-					#print('2-1', x + 1, y, g.apple_koord)
-					if vertex[0] == x + 1 and vertex[1] == y:
-						self.vector = (1, 0)
-						return True
-					elif not Snake.is_crash((self.body[0]['x'] + SNAKE_SIZE, self.body[0]['y'])) and g.distance_mas[x + 1][y] < res or (g.distance_mas[x + 1][y] == res
-							and self.vector == (1, 0)):
-						res = g.distance_mas[x + 1][y]
-						vect = (1, 0)
-				if y > 0 and g.distance_mas[x][y - 1] > 0 and self.vector != (0, 1):
-					#print('3-1', x, y - 1, g.apple_koord)
-					if vertex[0] == x and vertex[1] == y - 1:
-						self.vector = (0, -1)
-						return True
-					elif not Snake.is_crash((self.body[0]['x'], self.body[0]['y'] + SNAKE_SIZE * -1)) and g.distance_mas[x][y - 1] < res or (g.distance_mas[x][y - 1] == res
-							and self.vector == (0, -1)):
-						res = g.distance_mas[x][y - 1]
-						vect = (0, -1)
-				if y < m - 1 and g.distance_mas[x][y + 1] > 0 and self.vector != (0, -1):
-					#print('4-1', x, y + 1, g.apple_koord)
-					if vertex[0] == x and vertex[1] == y + 1:
-						self.vector = (0, 1)
-						return True
-					elif not Snake.is_crash((self.body[0]['x'], self.body[0]['y'] + SNAKE_SIZE)) and g.distance_mas[x][y + 1] < res or (g.distance_mas[x][y + 1] == res
-							and self.vector == (0, 1)):
-						res = g.distance_mas[x][y + 1]
-						vect = (0, 1)
+				new_vect = self.vector
+				new_move = Snake.get_move((self.body[0]['x'], self.body[0]['y']), new_vect, g)
+				if new_move['event'] == 1:
+					return True
+				elif new_move['event'] == 0:
+					if g.distance_mas[int(new_move['x'] / SNAKE_SIZE)][int(new_move['y'] / SNAKE_SIZE)] < res:
+						res = g.distance_mas[int(new_move['x'] / SNAKE_SIZE)][int(new_move['y'] / SNAKE_SIZE)]
+						vect = new_vect
+
+				new_vect = (self.vector[1], self.vector[0])
+				new_move = Snake.get_move((self.body[0]['x'], self.body[0]['y']), new_vect, g)
+				if new_move['event'] == 1:
+					self.vector = new_vect
+					return True
+				elif new_move['event'] == 0:
+					if g.distance_mas[int(new_move['x'] / SNAKE_SIZE)][int(new_move['y'] / SNAKE_SIZE)] < res:
+						res = g.distance_mas[int(new_move['x'] / SNAKE_SIZE)][int(new_move['y'] / SNAKE_SIZE)]
+						vect = new_vect
+
+				new_vect = (self.vector[1] * -1, self.vector[0] * -1)
+				new_move = Snake.get_move((self.body[0]['x'], self.body[0]['y']), new_vect, g)
+				if new_move['event'] == 1:
+					self.vector = new_vect
+					return True
+				elif new_move['event'] == 0:
+					if g.distance_mas[int(new_move['x'] / SNAKE_SIZE)][int(new_move['y'] / SNAKE_SIZE)] < res:
+						res = g.distance_mas[int(new_move['x'] / SNAKE_SIZE)][int(new_move['y'] / SNAKE_SIZE)]
+						vect = new_vect
+
+				new_vect = (self.vector[0] * -1, self.vector[1] * -1)
+				if(t_len > 1 and g.item_is_move):
+					if(self.body[t_len - 1]['x'] > self.body[t_len - 2]['x']):
+						new_vect = (1, 0)
+					elif(self.body[t_len - 1]['x'] < self.body[t_len - 2]['x']):
+						new_vect = (-1, 0)
+					elif(self.body[t_len - 1]['y'] < self.body[t_len - 2]['y']):
+						new_vect = (0, -1)
+					elif(self.body[t_len - 1]['y'] > self.body[t_len - 2]['y']):
+						new_vect = (0, 1)
+					new_move = Snake.get_move((self.body[t_len - 1]['x'], self.body[t_len - 1]['y']), new_vect, g)
+				else:
+					new_move = Snake.get_move((self.body[0]['x'], self.body[0]['y']), new_vect, g)
+				if new_move['event'] == 1:
+					self.vector = new_vect
+					if(t_len > 1 and g.item_is_move):
+						self.body.reverse()
+						self.is_reverse = True
+					return True
+				elif new_move['event'] == 0:
+					if g.distance_mas[int(new_move['x'] / SNAKE_SIZE)][int(new_move['y'] / SNAKE_SIZE)] < res:
+						res = g.distance_mas[int(new_move['x'] / SNAKE_SIZE)][int(new_move['y'] / SNAKE_SIZE)]
+						vect = (self.vector[0] * -1, self.vector[1] * -1)
+
+				
 				self.vector = vect
 			else:
+				#print('not optimal')
 				vectors = [(1, 0), (-1, 0), (0, 1), (0, -1)]
 				v_len = len(vectors)
 				if v_len > 0:
 					self.vector = vectors[randint(0, v_len - 1)]
 
 			if g.item_is_move and len(self.body) > 1 and old_v[0] * -1 == self.vector[0] and old_v[1] * -1 == self.vector[1]:
-				print('reverse')
+				#print('reverse', self.vector, self.body[0], g.apple_koord)
 				new_v = self.vector
 				self.vector = old_v
 				ind = 0
@@ -273,7 +307,7 @@ class Snake(object):
 				last = len(self.body) - 1
 				if g.item_is_move and last != 0 and self.vector[0] * -1 == koord[0] and self.vector[1] * -1 == koord[1]:
 					if option < 101:
-						res = Snake.get_move((self.body[last]['x'], self.body[last]['y']), koord)
+						res = Snake.get_move((self.body[last]['x'], self.body[last]['y']), koord, g)
 						if res['event'] == 1:
 							ind = 0
 							if old_v[1] != 0:
@@ -283,7 +317,7 @@ class Snake(object):
 					else:
 						continue
 				else:
-					res = Snake.get_move((self.body[0]['x'], self.body[0]['y']), koord)
+					res = Snake.get_move((self.body[0]['x'], self.body[0]['y']), koord, g)
 				if res['event'] == 1:
 					self.vector = koord
 					#print('vector apple', self.vector, self.body[0])
@@ -314,6 +348,23 @@ class Snake(object):
 				self.reverse(new_v, ind)
 			#print('vector last', self.vector, self.body[0], option)
 
+	def print_mas(mas, g):
+		n = int(WIDTH / SNAKE_SIZE)
+		m = int(HEIGHT / SNAKE_SIZE)
+		vertex = (int(g.apple_koord[0] / SNAKE_SIZE), int(g.apple_koord[1] / SNAKE_SIZE))
+		j = 0
+		while j < m:
+			i = 0
+			res = ""
+			while i < n:
+				k = str(mas[i][j])
+				if (i, j) == vertex:
+					k = "a"
+				res = res + k + " "
+				i += 1
+			print((str(j)).ljust(2), '|', res)
+			j += 1
+
 	def dextra_ways(g):
 		n = int(WIDTH / SNAKE_SIZE)
 		m = int(HEIGHT / SNAKE_SIZE)
@@ -323,36 +374,24 @@ class Snake(object):
 		vertex = (int(g.apple_koord[0] / SNAKE_SIZE), int(g.apple_koord[1] / SNAKE_SIZE))
 		control_mas[vertex[0]][vertex[1]] = 0
 		
-		#j = 0
-		#while j < m:
-		#	i = 0
-		#	res = ""
-		#	while i < n:
-		#		k = str(control_mas[i][j])
-		#		if k == "0":
-		#			k = "-"
-		#		if (i, j) == vertex:
-		#			k = "a"
-		#		res = res + k + " "
-		#		i += 1
-		#	print((str(j)).ljust(2), '|', res)
-		#	j += 1
-		
 		Snake.change_ways((vertex,), g.distance_mas, n, m, control_mas)
 
+		# Snake.print_mas(g.distance_mas, g)
+
 	def get_let_mas(g, let_mas):
-		#for sn in GAME.snakes:
-		#	i = 0
-		#	while i < len(sn.body):
-		#		let_mas[int(sn.body[i]['x'] / SNAKE_SIZE)][int(sn.body[i]['y'] / SNAKE_SIZE)] = 2
-		#		i += 1
+		if not g.item_is_move:
+			# змеи
+			for sn in g.snakes:
+				i = 1
+				while i < len(sn.body):
+					let_mas[int(sn.body[i]['x'] / SNAKE_SIZE)][int(sn.body[i]['y'] / SNAKE_SIZE)] = 2
+					i += 1
 		
 		# забор
 		for fn in g.fence:
 			let_mas[int(fn[0] / SNAKE_SIZE)][int(fn[1] / SNAKE_SIZE)] = 2
 
 	def change_ways(vertexes, distance_mas, n, m, control_mas):
-		GAME.bot_count += 1
 		items = []
 		#print('vertexes', vertexes)
 		for vertex in vertexes:
@@ -381,8 +420,6 @@ class Snake(object):
 		
 		if len(items) > 0:
 			Snake.change_ways(items, distance_mas, n, m, control_mas)
-		
-		GAME.bot_count -= 1
 
 	def count_cell(x, y, distance, distance_mas, items, control_mas):
 		if control_mas[x][y] != 2:
