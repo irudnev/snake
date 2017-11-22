@@ -555,6 +555,7 @@ def listen_server(sock):
 
 			snakes = entry.get('snakes', None)
 			if snakes:
+				# удаление несуществующих змеек
 				mas_del_sn = []
 				for g_sn in g.snakes:
 					is_sn = False
