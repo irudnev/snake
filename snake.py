@@ -175,7 +175,13 @@ class MyGame():
 					#c.coords(sn.body[0]['id'], sn.body[0]['x'], sn.body[0]['y'],
 					#	sn.body[0]['x'] + m.SNAKE_SIZE, sn.body[0]['y'] + m.SNAKE_SIZE)
 		
-		root.after(g.speed, MyGame.next_step)
+		if g.game_over:
+			c.delete('all')
+			for sn in g.snakes:
+				m.SNAKE_COLORS.append(sn.color)
+			option_window(False, True)
+		else:
+			root.after(g.speed, MyGame.next_step)
 
 	def move(snake, new_koord_x, new_koord_y):
 		#print('move')
@@ -398,13 +404,16 @@ def delete_option_window():
 		mg.leader_board.grid_remove()
 
 def login():
+	g.game_over = False
 	if mg.pc_game.get():
 		# игра против ПК
 		delete_option_window()
+		g.fence.clear()
+		g.level_apple_count = 10
 		g.item_is_move = mg.item_is_move.get()
 		try:
 			g.bot_count = int(mg.bot_count.get())
-			max_count = MAX_PLAYERS - 1
+			max_count = m.MAX_PLAYERS - 1
 			if g.bot_count > max_count:
 				g.bot_count = max_count
 		except:
@@ -414,6 +423,7 @@ def login():
 		g.get_apple_koord()
 		mg.create_apple()
 		m.Snake.add_snake(g, len(g.snakes), mg.login_text.get(), 3)
+		mg.create_heart(3)
 		MySnake.create_snake()
 		#m.Snake.get_move((new_snake.body[0]['x'], new_snake.body[0]['x']), new_snake.vector)
 		# создание ботов
@@ -421,6 +431,7 @@ def login():
 
 		MyGame.create_fortune()
 
+		mg.create_score(0)
 		mg.create_scores()
 
 		c.focus_set()
@@ -564,6 +575,7 @@ def listen_server(sock):
 							is_sn = True
 							break
 					if not is_sn:
+						c.delete('snakes' + g_sn.name)
 						mas_del_sn.append(g_sn)
 				for sn in mas_del_sn:
 					g.snakes.remove(sn)
@@ -580,20 +592,26 @@ def listen_server(sock):
 								t_sn = t_s
 						if not t_sn:
 							# добавился игрок
-							print('new snake', sn.name)
+							#print('new snake', sn.name, sn.body)
 							new_snake = sn
 							#new_snake.color = sn.color
-							el = MySnake.create_element('snakes' + new_snake.name, sn.body[0]['x'], sn.body[0]['y'], new_snake.color, True, True, sn.id)
-							new_snake.body[0].update({'id': el['id']})
+							j = len(sn.body) - 1
+							while j >= 0:
+								# print('while', j, sn.name, sn.body[j]['x'], sn.body[j]['y'], 'snakes' + t_sn.name)
+								el = MySnake.create_element('snakes' + new_snake.name, new_snake.body[j]['x'], new_snake.body[j]['y'], new_snake.color, j == 0 or g.item_is_move, j == 0, new_snake.id)
+								new_snake.body[j].update({'id': el['id']})
+								j -= 1
+							# el = MySnake.create_element('snakes' + new_snake.name, sn.body[0]['x'], sn.body[0]['y'], new_snake.color, True, True, sn.id)
+							# new_snake.body[0].update({'id': el['id']})
 							g.snakes.append(new_snake)
 							mg.create_scores()
 						else:
 							# новых игроков нет
-							#print('else', len(sn.body) == len(t_sn.body))
+							print('else', sn.name, len(sn.body) == len(t_sn.body))
 							if len(sn.body) == len(t_sn.body):
 								# размер текущего игрока не изменился
 								#print('equal len', sn.body[0]['x'], sn.body[0]['y'])
-								#print('g.snakes', t_sn.body, sn.is_reverse)
+								#print('g.snakes', t_sn.body, sn.name)
 								if sn.is_reverse:
 									t_sn.body.reverse()
 									MySnake.change_tail(t_sn)
@@ -615,7 +633,7 @@ def listen_server(sock):
 									mg.create_scores()
 							else:
 								# размер текущего игрока изменился
-								#print('else', sn.name)
+								print('else', sn.name, sn.body)
 								c.delete('snakes' + sn.name)
 								t_sn.body.clear()
 								t_sn.lives = sn.lives
@@ -635,6 +653,9 @@ def listen_server(sock):
 										MyGame.lives = sn.lives
 										mg.create_heart(sn.lives)
 									#print('new g.body', t_sn.body)
+								else:
+									cicle = False
+									option_window(False, True)
 								mg.create_scores()
 					else:
 						c.delete('snakes' + sn.name)

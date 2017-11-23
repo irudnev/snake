@@ -228,23 +228,29 @@ def start_game():
 							#print('entry', sn.body)
 							data = pickle.dumps(entry)
 							#print('send to', sn.id, len(g.clients))
-							# исправить: не всегда id змейки будет порядком клиента
 							for cl in g.clients:
 								if cl['name'] == sn.name:
 									cl['client'].send(data)
 									break
 							#g.clients[sn.id]['client'].send(data)
-						exception_count = 0
+						#exception_count = 0
 						sn.is_reverse = False
 					except:
 						#print('except', 'id', sn.id)
-						for cl in g.clients:
-							if cl['name'] == sn.name:
-								g.clients.remove(cl)
-								break
+						cl_len = len(g.clients)
+						j = 0
+						while j < cl_len:
+							print('check name', g.clients[j]['name'])
+							if g.clients[j]['name'] == sn.name:
+								g.clients.pop(j)
+								cl_len -= 1
+							else:
+								j += 1
+						print('check')
+						g.check_game()
+						print('check2', g.game_over)
 						m.SNAKE_COLORS.append(sn.color)
-						g.snakes.remove(sn)
-						exception_count += 1
+						#exception_count += 1
 				#if g.game_over or exception_count > 5:
 				#	g.game_over = True
 				#	print('close sock from startgame', g.game_over, exception_count > 5)

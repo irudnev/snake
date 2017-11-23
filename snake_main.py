@@ -60,6 +60,7 @@ class Game():
 	def check_game(self):
 		g_over = True
 		for sn in self.snakes:
+			print('check name2', sn.name)
 			if sn.sn_game_over == False and not sn.is_bot:
 				g_over = False
 		if g_over:
