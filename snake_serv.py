@@ -269,7 +269,7 @@ def start_game():
 				#	break;
 
 				#t.sleep(g.speed/1000)
-				t.sleep(g.speed/100)
+				t.sleep(g.speed/1000)
 				#client.sendall(data.upper())
 			#	t.sleep(5)
 			#	break;

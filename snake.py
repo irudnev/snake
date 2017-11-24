@@ -569,6 +569,7 @@ def listen_server(sock):
 			if not MyGame.sn_name:
 				name = entry.get('name', None)
 				if name:
+					print('new name', name)
 					MyGame.sn_name = name
 
 			snakes = entry.get('snakes', None)
@@ -612,6 +613,9 @@ def listen_server(sock):
 							# el = MySnake.create_element('snakes' + new_snake.name, sn.body[0]['x'], sn.body[0]['y'], new_snake.color, True, True, sn.id)
 							# new_snake.body[0].update({'id': el['id']})
 							g.snakes.append(new_snake)
+							if MyGame.sn_name == sn.name:
+								MyGame.score = sn.score
+								mg.create_score(sn.score)
 							mg.create_scores()
 						else:
 							# новых игроков нет
