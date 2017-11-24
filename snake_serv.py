@@ -133,12 +133,13 @@ def client_listen(s):
 			#cl_id = uuid.uuid4()
 			cl_id = len(g.snakes)
 			#entry = {'id': cl_id}
-			print('id', cl_id)
 
 			for cl in g.clients:
 				if cl['name'] == log:
 					log = log + "1"
 					break
+
+			print('id', cl_id, log, len(g.snakes), len(g.clients))
 
 			g.clients.append({'id': cl_id, 'name': log, 'client': client, 'addr': client_addr})
 
@@ -146,6 +147,8 @@ def client_listen(s):
 			g.snakes.append(new_snake)
 
 			if len(g.snakes) == 1:
+				print('new game')
+				g.game_over = False
 				i = 0
 				while i < g.bot_count:
 					m.Snake.add_snake(g, len(g.snakes), 'bot' + str(len(g.snakes)), 3, True, g.bot_level)
@@ -225,9 +228,11 @@ def start_game():
 					try:
 						if not sn.is_bot:
 							entry = {'apple_koord': g.apple_koord, 'id': sn.id, 'name': sn.name, 'snakes': g.snakes, 'fortune': g.fortune}
+							if g.game_over or sn.sn_game_over:
+								entry['end'] = 1
 							#print('entry', sn.body)
 							data = pickle.dumps(entry)
-							#print('send to', sn.id, len(g.clients))
+							#print('send to', sn.name, len(g.clients))
 							for cl in g.clients:
 								if cl['name'] == sn.name:
 									cl['client'].send(data)
@@ -236,20 +241,26 @@ def start_game():
 						#exception_count = 0
 						sn.is_reverse = False
 					except:
-						#print('except', 'id', sn.id)
+						#print('except', 'name', sn.name)
+						m.SNAKE_COLORS.append(sn.color)
+						g.snakes.remove(sn)
 						cl_len = len(g.clients)
 						j = 0
 						while j < cl_len:
-							print('check name', g.clients[j]['name'])
+							#print('check name', g.clients[j]['name'])
 							if g.clients[j]['name'] == sn.name:
-								g.clients.pop(j)
+								el = g.clients.pop(j)
+								#print('popped', el['name'])
 								cl_len -= 1
 							else:
 								j += 1
-						print('check')
+						#print('check')
 						g.check_game()
-						print('check2', g.game_over)
-						m.SNAKE_COLORS.append(sn.color)
+						if g.game_over:
+							for t_sn in g.snakes:
+								m.SNAKE_COLORS.append(t_sn.color)
+							g.snakes.clear()
+						#print('check2', g.game_over)
 						#exception_count += 1
 				#if g.game_over or exception_count > 5:
 				#	g.game_over = True
@@ -258,11 +269,12 @@ def start_game():
 				#	break;
 
 				#t.sleep(g.speed/1000)
-				t.sleep(g.speed/1000)
+				t.sleep(g.speed/100)
 				#client.sendall(data.upper())
 			#	t.sleep(5)
 			#	break;
 			else:
+				#print('del else')
 				s = None
 				entry = {'end': 1}
 				data = pickle.dumps(entry)
@@ -270,7 +282,7 @@ def start_game():
 					m.SNAKE_COLORS.append(sn.color)
 				for cl in g.clients:
 					cl['client'].send(data)
-				print('del snakes')
+				#print('del snakes')
 				g.snakes.clear()
 				g.clients.clear()
 				g.game_over = True

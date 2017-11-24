@@ -296,9 +296,15 @@ def key(event):
 		mg.sock.send(data)
 		if entry['way'] == 'Escape':
 			mg.sock.close()
-			root.destroy()
+			if mg.log_label == None:
+				option_window()
+			else:
+				root.destroy()
 	elif event.keysym == 'Escape':
-		root.destroy()
+		if mg.log_label == None:
+			option_window()
+		else:
+			root.destroy()
 	elif is_pc:
 		t_key(event.keysym, g.snakes[0])
 
@@ -380,6 +386,7 @@ def option_window(connect_error=False, leader_board=False):
 
 def delete_option_window():
 	mg.log_label.grid_remove()
+	mg.log_label = None
 	mg.vs_pc.grid_remove()
 	mg.ip_label.grid_remove()
 	mg.ip_text.grid_remove()
@@ -578,6 +585,7 @@ def listen_server(sock):
 						c.delete('snakes' + g_sn.name)
 						mas_del_sn.append(g_sn)
 				for sn in mas_del_sn:
+					print('remove from client', sn.name)
 					g.snakes.remove(sn)
 
 				i = 0
@@ -607,7 +615,7 @@ def listen_server(sock):
 							mg.create_scores()
 						else:
 							# новых игроков нет
-							print('else', sn.name, len(sn.body) == len(t_sn.body))
+							# print('else', sn.name, len(sn.body) == len(t_sn.body))
 							if len(sn.body) == len(t_sn.body):
 								# размер текущего игрока не изменился
 								#print('equal len', sn.body[0]['x'], sn.body[0]['y'])
@@ -633,29 +641,29 @@ def listen_server(sock):
 									mg.create_scores()
 							else:
 								# размер текущего игрока изменился
-								print('else', sn.name, sn.body)
+								# print('else', sn.name, sn.body)
 								c.delete('snakes' + sn.name)
 								t_sn.body.clear()
 								t_sn.lives = sn.lives
 								t_sn.score = sn.score
-								if len(sn.body) > 0:
-									j = len(sn.body) - 1
-									while j >= 0:
-										#print('while', j, sn.name, sn.body[j]['x'], sn.body[j]['y'], 'snakes' + t_sn.name)
-										t_sn.add_snake_len(sn.body[j]['x'], sn.body[j]['y'])
-										el = MySnake.create_element('snakes' + t_sn.name, sn.body[j]['x'], sn.body[j]['y'], sn.color, j == 0 or g.item_is_move, j == 0, sn.id)
-										t_sn.body[0].update({'id': el['id']})
-										j -= 1
+								#if len(sn.body) > 0:
+								j = len(sn.body) - 1
+								while j >= 0:
+									#print('while', j, sn.name, sn.body[j]['x'], sn.body[j]['y'], 'snakes' + t_sn.name)
+									t_sn.add_snake_len(sn.body[j]['x'], sn.body[j]['y'])
+									el = MySnake.create_element('snakes' + t_sn.name, sn.body[j]['x'], sn.body[j]['y'], sn.color, j == 0 or g.item_is_move, j == 0, sn.id)
+									t_sn.body[0].update({'id': el['id']})
+									j -= 1
 
-									if MyGame.sn_name == sn.name:
-										MyGame.score = sn.score
-										mg.create_score(sn.score)
-										MyGame.lives = sn.lives
-										mg.create_heart(sn.lives)
+								if MyGame.sn_name == sn.name:
+									MyGame.score = sn.score
+									mg.create_score(sn.score)
+									MyGame.lives = sn.lives
+									mg.create_heart(sn.lives)
 									#print('new g.body', t_sn.body)
-								else:
-									cicle = False
-									option_window(False, True)
+								#else:
+								#	cicle = False
+								#	option_window(False, True)
 								mg.create_scores()
 					else:
 						c.delete('snakes' + sn.name)
@@ -664,9 +672,12 @@ def listen_server(sock):
 
 			endgame = entry.get('end', None)
 			if endgame:
+				# print('endgame')
 				for sn in g.snakes:
 					c.delete('snakes' + sn.name)
 				cicle = False
+				sock.close()
+				sock = None
 				option_window(False, True)
 
 	except Exception as inst:
